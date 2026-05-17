@@ -31,7 +31,7 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - run: bun build --compile --target=${{ matrix.target }} --external react-devtools-core ./src/index.ts --outfile ${{ matrix.outfile }}
+      - run: bun build --compile --target=${{ matrix.target }} ./src/index.ts --outfile ${{ matrix.outfile }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.outfile }}

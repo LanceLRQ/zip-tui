@@ -109,3 +109,23 @@ CLI uses 7z-style single-letter subcommands: `a` (add/compress), `x` (extract), 
 ## TDD workflow
 
 Tasks follow a strict 5-step TDD cycle: write failing test → run to confirm failure → implement → run to confirm pass → commit. Do **not** skip the failure-verification step; do **not** batch multiple tasks into a single commit. Commit messages follow Conventional Commits (`feat:` / `fix:` / `chore:` / `test:` / `ci:` / `docs:` / `refactor:`).
+
+## Pre-commit verification (mandatory)
+
+Before **every** `git commit`, run the same checks CI does and only commit when all three pass:
+
+```bash
+bun run lint && bun run typecheck && bun run test:coverage
+```
+
+This is non-negotiable — CI on GitHub runs the same three steps, and a red CI on `main` blocks releases. The compiled-binary smoke test (`tests/e2e/binary-smoke.test.ts`) is included in `test:coverage`, so a broken build is caught locally before it ever reaches CI.
+
+If any of the three fails, fix the underlying issue and rerun — never `--no-verify`, never skip tests, never lower coverage thresholds to make red turn green.
+
+## CI policy
+
+`.github/workflows/ci.yml` runs only on:
+- pushes to `main`
+- any pull request
+
+Feature/dev branches don't trigger CI on every push — the pre-commit verification above is what catches regressions there. CI on `main` and PR is the final gate before merge/release.
