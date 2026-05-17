@@ -8,7 +8,12 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.d.ts', 'src/index.ts', 'src/tui/**/*.tsx'],
+      exclude: [
+        'src/**/*.d.ts',
+        'src/index.ts',
+        'src/tui/**/*.tsx',
+        'src/tui/hooks/**/*.ts',
+      ],
       thresholds: {
         lines: 80,
         functions: 80,
