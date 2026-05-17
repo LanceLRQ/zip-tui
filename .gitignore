@@ -145,3 +145,13 @@ vite.config.ts.timestamp-*
 CLAUDE.local.md
 plans/
 
+# bun
+bun.lockb
+
+# editor
+.vscode/
+.idea/
+
+# os
+.DS_Store
+
