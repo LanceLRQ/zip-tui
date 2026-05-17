@@ -5,6 +5,8 @@ import type React from 'react';
 import { useState } from 'react';
 import { buildDefaultRegistry } from '../../engine/builder.js';
 import { streamCommand } from '../../engine/executor.js';
+import { createProgressTracker } from '../../engine/progress.js';
+import { startSizePoll } from '../../engine/sizePoll.js';
 import type { FormatId } from '../../engine/types.js';
 import { useAppStore } from '../../store/index.js';
 import { CommandPreview } from '../components/CommandPreview.js';
@@ -151,9 +153,20 @@ export const CreateWizard: React.FC = () => {
             execution.start();
             wizard.next();
             const handle = streamCommand(cmd);
+            const tracker = createProgressTracker(adapter, (p) => execution.setProgress(p));
+            const stopPoll = adapter.parseProgress
+              ? () => {}
+              : startSizePoll(wizard.archive, 500, () => {});
             for await (const ev of handle.events) {
-              if (ev.type === 'stderr') execution.appendStderr(ev.data ?? '');
-              if (ev.type === 'exit') execution.finish(ev.exitCode ?? -1);
+              if (ev.type === 'stdout') tracker.feed(ev.data ?? '');
+              if (ev.type === 'stderr') {
+                tracker.feed(ev.data ?? '');
+                execution.appendStderr(ev.data ?? '');
+              }
+              if (ev.type === 'exit') {
+                stopPoll();
+                execution.finish(ev.exitCode ?? -1);
+              }
             }
           }}
         />
