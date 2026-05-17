@@ -86,4 +86,14 @@ Archive:  out.zip
     const p = zipAdapter.parseProgress?.('  adding: src/index.ts (deflated 45%)');
     expect(p).toMatchObject({ current: 1, total: 0 });
   });
+
+  it('forwards encoding via -O flag', () => {
+    const c = zipAdapter.buildExtract({
+      archive: 'out.zip',
+      outputDir: '/tmp',
+      encoding: 'gbk',
+    });
+    expect(c.args).toContain('-O');
+    expect(c.args).toContain('GBK');
+  });
 });

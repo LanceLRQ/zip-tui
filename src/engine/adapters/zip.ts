@@ -30,6 +30,7 @@ export const zipAdapter: FormatAdapter = {
   buildExtract(opts) {
     const args = ['-o'];
     if (opts.password) args.push('-P', opts.password);
+    if (opts.encoding) args.push('-O', opts.encoding.toUpperCase());
     args.push(opts.archive, '-d', opts.outputDir);
     if (opts.files && opts.files.length > 0) args.push(...opts.files);
     return { cmd: 'unzip', args };
