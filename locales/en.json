@@ -1,0 +1,19 @@
+{
+  "menu": {
+    "title": "zip-tui",
+    "create": "Compress",
+    "extract": "Extract",
+    "view": "View archive",
+    "deps": "Dependencies",
+    "settings": "Settings",
+    "quit": "Quit"
+  },
+  "common": {
+    "back": "Back",
+    "next": "Next",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "copy": "Copy",
+    "run": "Run"
+  }
+}
