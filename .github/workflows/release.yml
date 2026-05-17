@@ -1,0 +1,51 @@
+name: Release
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: bun-darwin-arm64
+            outfile: zt-darwin-arm64
+          - os: macos-13
+            target: bun-darwin-x64
+            outfile: zt-darwin-x64
+          - os: ubuntu-22.04
+            target: bun-linux-x64
+            outfile: zt-linux-x64
+          - os: ubuntu-22.04-arm
+            target: bun-linux-arm64
+            outfile: zt-linux-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun build --compile --target=${{ matrix.target }} --external react-devtools-core ./src/index.ts --outfile ${{ matrix.outfile }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.outfile }}
+          path: ${{ matrix.outfile }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
