@@ -15,6 +15,8 @@ import {
 
 async function launchTui(_args: ParsedArgs): Promise<number> {
   const { App } = await import('./tui/App.js');
+  const { clearScreen } = await import('./tui/clearScreen.js');
+  clearScreen();
   render(React.createElement(App));
   return 0;
 }
