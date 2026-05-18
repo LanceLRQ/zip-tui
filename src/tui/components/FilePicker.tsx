@@ -233,11 +233,19 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
     (mode === 'openFile' || mode === 'saveFile') &&
     filterExtensions !== undefined &&
     filterExtensions.length > 0;
-  const filterText = filterVisible
-    ? `[${filterEnabled ? t('picker.filterOn') : t('picker.filterOff')}] ${
-        filterEnabled ? (filterExtensions ?? []).join(' ') : '*'
-      }`
-    : '';
+
+  const FILTER_PREVIEW_CAP = 3;
+  const filterText = ((): string => {
+    if (!filterVisible) return '';
+    if (!filterEnabled) return `[${t('picker.filterOff')}]`;
+    const all = filterExtensions ?? [];
+    if (all.length <= FILTER_PREVIEW_CAP) {
+      return `[${t('picker.filterOn')}] ${all.join(' ')}`;
+    }
+    const head = all.slice(0, FILTER_PREVIEW_CAP).join(' ');
+    const rest = all.length - FILTER_PREVIEW_CAP;
+    return `[${t('picker.filterOn')}] ${head} +${rest}`;
+  })();
 
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1}>
@@ -246,12 +254,20 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
         {mode === 'multiSelect' && <Text>{t('picker.selected', { count: selected.size })}</Text>}
       </Box>
       <Box justifyContent="space-between">
-        <Text dimColor>📂 {cwd}</Text>
-        {filterVisible && mode === 'openFile' && <Text dimColor>{filterText}</Text>}
+        <Box flexShrink={1}>
+          <Text dimColor wrap="truncate-middle">
+            📂 {cwd}
+          </Text>
+        </Box>
+        {filterVisible && mode === 'openFile' && (
+          <Box flexShrink={0} marginLeft={2}>
+            <Text dimColor>{filterText}</Text>
+          </Box>
+        )}
       </Box>
       {mode === 'saveFile' && (
         <Box justifyContent="space-between">
-          <Box>
+          <Box flexShrink={1}>
             <Text>{t('picker.filename')}: </Text>
             <TextInput
               value={filename}
@@ -260,7 +276,11 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
               focus={focus === 'filename'}
             />
           </Box>
-          {filterVisible && <Text dimColor>{filterText}</Text>}
+          {filterVisible && (
+            <Box flexShrink={0} marginLeft={2}>
+              <Text dimColor>{filterText}</Text>
+            </Box>
+          )}
         </Box>
       )}
       {mode === 'saveFile' && error && <Text color="red">{error}</Text>}
