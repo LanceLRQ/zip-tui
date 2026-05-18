@@ -229,37 +229,55 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
     if (error) setError(null);
   };
 
+  const filterVisible =
+    (mode === 'openFile' || mode === 'saveFile') &&
+    filterExtensions !== undefined &&
+    filterExtensions.length > 0;
+  const filterText = filterVisible
+    ? `[${filterEnabled ? t('picker.filterOn') : t('picker.filterOff')}] ${
+        filterEnabled ? (filterExtensions ?? []).join(' ') : '*'
+      }`
+    : '';
+
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1}>
-      <Text bold>{t(TITLE_KEYS[mode])}</Text>
-      <Text dimColor>📂 {cwd}</Text>
+      <Box justifyContent="space-between">
+        <Text bold>{t(TITLE_KEYS[mode])}</Text>
+        {mode === 'multiSelect' && <Text>{t('picker.selected', { count: selected.size })}</Text>}
+      </Box>
+      <Box justifyContent="space-between">
+        <Text dimColor>📂 {cwd}</Text>
+        {filterVisible && mode === 'openFile' && <Text dimColor>{filterText}</Text>}
+      </Box>
       {mode === 'saveFile' && (
-        <Box>
-          <Text>{t('picker.filename')}: </Text>
-          <TextInput
-            value={filename}
-            onChange={handleFilenameChange}
-            onSubmit={confirmSaveFile}
-            focus={focus === 'filename'}
-          />
+        <Box justifyContent="space-between">
+          <Box>
+            <Text>{t('picker.filename')}: </Text>
+            <TextInput
+              value={filename}
+              onChange={handleFilenameChange}
+              onSubmit={confirmSaveFile}
+              focus={focus === 'filename'}
+            />
+          </Box>
+          {filterVisible && <Text dimColor>{filterText}</Text>}
         </Box>
       )}
       {mode === 'saveFile' && error && <Text color="red">{error}</Text>}
-      <VirtualTree
-        nodes={items}
-        pageSize={15}
-        selectedIndex={cursor}
-        {...(mode === 'multiSelect' ? { selectedIds: selected } : {})}
-      />
-      {mode === 'multiSelect' && <Text>{t('picker.selected', { count: selected.size })}</Text>}
-      {(mode === 'openFile' || mode === 'saveFile') &&
-        filterExtensions &&
-        filterExtensions.length > 0 && (
-          <Text dimColor>
-            [{filterEnabled ? t('picker.filterOn') : t('picker.filterOff')}]{' '}
-            {filterEnabled ? filterExtensions.join(' ') : '*'}
-          </Text>
-        )}
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderLeft={false}
+        borderRight={false}
+        marginY={0}
+      >
+        <VirtualTree
+          nodes={items}
+          pageSize={15}
+          selectedIndex={cursor}
+          {...(mode === 'multiSelect' ? { selectedIds: selected } : {})}
+        />
+      </Box>
       {mode !== 'saveFile' && error && <Text color="red">{error}</Text>}
       <Text dimColor>{t('picker.hint')}</Text>
     </Box>
