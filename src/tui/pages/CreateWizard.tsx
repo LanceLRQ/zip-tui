@@ -1,8 +1,6 @@
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
-import TextInput from 'ink-text-input';
 import type React from 'react';
-import { useState } from 'react';
 import { buildDefaultRegistry } from '../../engine/builder.js';
 import { streamCommand } from '../../engine/executor.js';
 import { createProgressTracker } from '../../engine/progress.js';
@@ -11,9 +9,8 @@ import type { FormatId } from '../../engine/types.js';
 import { useAppStore } from '../../store/index.js';
 import { CommandPreview } from '../components/CommandPreview.js';
 import { ExecutionMonitor } from '../components/ExecutionMonitor.js';
+import { FilePicker } from '../components/FilePicker.js';
 import { StatusBar } from '../components/StatusBar.js';
-import { listDirectoryAsNodes } from '../components/useDirectoryTree.js';
-import { VirtualTree } from '../components/VirtualTree.js';
 import { useT } from '../hooks/useI18n.js';
 
 const FORMATS: { label: string; value: FormatId }[] = [
@@ -28,48 +25,25 @@ export const CreateWizard: React.FC = () => {
   const setRoute = useAppStore((s) => s.setRoute);
   const execution = useAppStore((s) => s.execution);
 
-  const [cwd] = useState(process.cwd());
-  const [nodes] = useState(() => listDirectoryAsNodes(cwd, { depth: 0, showHidden: false }));
-  const [cursor, setCursor] = useState(0);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  useInput((input, key) => {
-    if (key.escape) {
-      if (wizard.step === 0) setRoute('menu');
-      else wizard.prev();
-    }
-    if (wizard.step === 1) {
-      if (key.upArrow) setCursor((c) => Math.max(0, c - 1));
-      if (key.downArrow) setCursor((c) => Math.min(nodes.length - 1, c + 1));
-      if (input === ' ') {
-        const id = nodes[cursor]?.id;
-        if (id) {
-          setSelected((s) => {
-            const n = new Set(s);
-            if (n.has(id)) n.delete(id);
-            else n.add(id);
-            return n;
-          });
-        }
-      }
-      if (key.return) {
-        wizard.setInputs([...selected]);
-        wizard.next();
-      }
-    }
-  });
+  useInput(
+    (_input, key) => {
+      if (key.escape) wizard.prev();
+    },
+    { isActive: wizard.step >= 2 && wizard.step <= 4 },
+  );
 
   if (wizard.step === 0) {
     return (
       <Box flexDirection="column">
         <Text>{t('menu.create')} · 1/5</Text>
-        <Text>archive name:</Text>
-        <TextInput
-          value={wizard.archive}
-          onChange={wizard.setArchive}
-          onSubmit={() => wizard.next()}
+        <FilePicker
+          mode="saveFile"
+          onConfirm={(p) => {
+            wizard.setArchive(p);
+            wizard.next();
+          }}
+          onCancel={() => setRoute('menu')}
         />
-        <StatusBar hints={[{ key: 'Esc', label: t('common.back') }]} />
       </Box>
     );
   }
@@ -77,21 +51,14 @@ export const CreateWizard: React.FC = () => {
   if (wizard.step === 1) {
     return (
       <Box flexDirection="column">
-        <Text>2/5 select files (cwd={cwd})</Text>
-        <VirtualTree
-          nodes={nodes}
-          pageSize={15}
-          selectedIndex={cursor}
-          selectedIds={selected}
-          onToggle={() => {}}
-        />
-        <StatusBar
-          hints={[
-            { key: '↑↓', label: 'nav' },
-            { key: 'Space', label: 'toggle' },
-            { key: 'Enter', label: 'next' },
-            { key: 'Esc', label: t('common.back') },
-          ]}
+        <Text>{t('menu.create')} · 2/5</Text>
+        <FilePicker
+          mode="multiSelect"
+          onConfirm={(ids) => {
+            wizard.setInputs(ids);
+            wizard.next();
+          }}
+          onCancel={() => wizard.prev()}
         />
       </Box>
     );
@@ -108,6 +75,7 @@ export const CreateWizard: React.FC = () => {
             wizard.next();
           }}
         />
+        <StatusBar hints={[{ key: 'Esc', label: t('common.back') }]} />
       </Box>
     );
   }
@@ -123,6 +91,7 @@ export const CreateWizard: React.FC = () => {
             wizard.next();
           }}
         />
+        <StatusBar hints={[{ key: 'Esc', label: t('common.back') }]} />
       </Box>
     );
   }

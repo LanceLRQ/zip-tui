@@ -1,19 +1,21 @@
-import { Box, Text, useInput } from 'ink';
+import { Box, Text } from 'ink';
 import SelectInput from 'ink-select-input';
-import TextInput from 'ink-text-input';
 import type React from 'react';
 import { useState } from 'react';
 import { buildDefaultRegistry } from '../../engine/builder.js';
 import { streamCommand } from '../../engine/executor.js';
+import { MVP_ARCHIVE_EXTENSIONS } from '../../engine/types.js';
 import { resolveExtractCommand } from '../../runner/direct.js';
 import { useAppStore } from '../../store/index.js';
 import { CommandPreview } from '../components/CommandPreview.js';
 import { ExecutionMonitor } from '../components/ExecutionMonitor.js';
-import { StatusBar } from '../components/StatusBar.js';
+import { FilePicker } from '../components/FilePicker.js';
+import { useT } from '../hooks/useI18n.js';
 
 type Step = 'archive' | 'output' | 'preview' | 'running';
 
 export const ExtractWizard: React.FC = () => {
+  const t = useT();
   const setRoute = useAppStore((s) => s.setRoute);
   const execution = useAppStore((s) => s.execution);
 
@@ -21,24 +23,18 @@ export const ExtractWizard: React.FC = () => {
   const [archive, setArchive] = useState('');
   const [outputDir, setOutputDir] = useState(process.cwd());
 
-  useInput((_input, key) => {
-    if (key.escape) {
-      if (step === 'archive') setRoute('menu');
-      else if (step === 'output') setStep('archive');
-      else if (step === 'preview') setStep('output');
-    }
-  });
-
   if (step === 'archive') {
     return (
       <Box flexDirection="column">
-        <Text>extract · archive path:</Text>
-        <TextInput value={archive} onChange={setArchive} onSubmit={() => setStep('output')} />
-        <StatusBar
-          hints={[
-            { key: 'Esc', label: 'back' },
-            { key: 'Enter', label: 'next' },
-          ]}
+        <Text>{t('menu.extract')} · 1/3</Text>
+        <FilePicker
+          mode="openFile"
+          filterExtensions={[...MVP_ARCHIVE_EXTENSIONS]}
+          onConfirm={(p) => {
+            setArchive(p);
+            setStep('output');
+          }}
+          onCancel={() => setRoute('menu')}
         />
       </Box>
     );
@@ -47,8 +43,16 @@ export const ExtractWizard: React.FC = () => {
   if (step === 'output') {
     return (
       <Box flexDirection="column">
-        <Text>output dir:</Text>
-        <TextInput value={outputDir} onChange={setOutputDir} onSubmit={() => setStep('preview')} />
+        <Text>{t('menu.extract')} · 2/3</Text>
+        <FilePicker
+          mode="openDir"
+          initialPath={outputDir}
+          onConfirm={(p) => {
+            setOutputDir(p);
+            setStep('preview');
+          }}
+          onCancel={() => setStep('archive')}
+        />
       </Box>
     );
   }
@@ -61,8 +65,8 @@ export const ExtractWizard: React.FC = () => {
         <CommandPreview command={cmd} />
         <SelectInput
           items={[
-            { label: 'run', value: 'run' },
-            { label: 'back', value: 'back' },
+            { label: t('common.run'), value: 'run' },
+            { label: t('common.back'), value: 'back' },
           ]}
           onSelect={async (it) => {
             if (it.value === 'back') {

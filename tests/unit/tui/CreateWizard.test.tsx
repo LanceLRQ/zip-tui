@@ -12,8 +12,14 @@ describe('CreateWizard', () => {
     useAppStore.getState().wizard.reset();
   });
 
-  it('renders step 0 (archive input)', () => {
+  it('renders step 0 with a saveFile picker default to archive.7z', () => {
     const { lastFrame } = render(<CreateWizard />);
-    expect(lastFrame()).toContain('archive name');
+    const out = lastFrame() ?? '';
+    expect(out).toContain('保存为');
+    expect(out).toContain('archive.7z');
+  });
+
+  it('defaults wizard.format to 7z so step 2 starts aligned', () => {
+    expect(useAppStore.getState().wizard.format).toBe('7z');
   });
 });

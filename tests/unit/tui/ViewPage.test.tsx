@@ -8,8 +8,10 @@ describe('ViewPage', () => {
     await initI18n('zh');
   });
 
-  it('renders the path input', () => {
+  it('renders an openFile picker for the archive path', () => {
     const { lastFrame } = render(<ViewPage />);
-    expect(lastFrame()).toContain('archive path');
+    const out = lastFrame() ?? '';
+    expect(out).toContain('选择文件');
+    expect(out).toContain('仅显示归档文件');
   });
 });
