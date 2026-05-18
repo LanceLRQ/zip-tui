@@ -14,10 +14,20 @@ import { StatusBar } from '../components/StatusBar.js';
 import { useT } from '../hooks/useI18n.js';
 
 const FORMATS: { label: string; value: FormatId }[] = [
-  { label: 'zip', value: 'zip' },
   { label: '7z', value: '7z' },
+  { label: 'zip', value: 'zip' },
   { label: 'tar.gz', value: 'tar.gz' },
+  { label: 'tar.bz2', value: 'tar.bz2' },
+  { label: 'tar.xz', value: 'tar.xz' },
+  { label: 'tar.zst', value: 'tar.zst' },
+  { label: 'tar', value: 'tar' },
+  { label: 'gz (single file)', value: 'gz' },
+  { label: 'bz2 (single file)', value: 'bz2' },
 ];
+
+function isSingleInputFormat(format: FormatId): boolean {
+  return format === 'gz' || format === 'bz2';
+}
 
 export const CreateWizard: React.FC = () => {
   const t = useT();
@@ -68,18 +78,33 @@ export const CreateWizard: React.FC = () => {
     );
   }
 
-  if (wizard.step === 2) {
+  if (wizard.step === 2 && wizard.format) {
+    const singleInput = isSingleInputFormat(wizard.format);
     return (
       <Box flexDirection="column">
-        <Text>{t('menu.create')} · 3/5</Text>
-        <FilePicker
-          mode="multiSelect"
-          onConfirm={(ids) => {
-            wizard.setInputs(ids);
-            wizard.next();
-          }}
-          onCancel={() => wizard.prev()}
-        />
+        <Text>
+          {t('menu.create')} · 3/5
+          {singleInput && ` · ${t('picker.singleInputHint')}`}
+        </Text>
+        {singleInput ? (
+          <FilePicker
+            mode="openFile"
+            onConfirm={(p) => {
+              wizard.setInputs([p]);
+              wizard.next();
+            }}
+            onCancel={() => wizard.prev()}
+          />
+        ) : (
+          <FilePicker
+            mode="multiSelect"
+            onConfirm={(ids) => {
+              wizard.setInputs(ids);
+              wizard.next();
+            }}
+            onCancel={() => wizard.prev()}
+          />
+        )}
       </Box>
     );
   }

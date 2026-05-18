@@ -27,6 +27,7 @@
     "filterOn": "archives only",
     "filterOff": "all files",
     "errorEmptyFilename": "Filename cannot be empty",
+    "singleInputHint": "single file only",
     "hint": "↑↓ nav · Space toggle · Enter open/select · Tab focus · d confirm · a/c all/clear · ~/. jump · h hidden · * filter · Esc cancel"
   }
 }

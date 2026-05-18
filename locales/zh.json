@@ -27,6 +27,7 @@
     "filterOn": "仅显示归档文件",
     "filterOff": "显示全部文件",
     "errorEmptyFilename": "文件名不能为空",
+    "singleInputHint": "仅可选 1 个文件",
     "hint": "↑↓移动 · Space选择 · Enter进入/选择 · Tab切焦点 · d确认 · a/c全选/清空 · ~/. 跳转 · h隐藏文件 · * 过滤 · Esc取消"
   }
 }
