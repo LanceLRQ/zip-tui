@@ -255,7 +255,7 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
       </Box>
       <Box justifyContent="space-between">
         <Box flexShrink={1}>
-          <Text dimColor wrap="truncate-middle">
+          <Text dimColor wrap="truncate">
             📂 {cwd}
           </Text>
         </Box>
@@ -292,8 +292,7 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
         borderStyle="single"
         borderLeft={false}
         borderRight={false}
-        marginY={0}
-        {...(mode === 'saveFile' && focus === 'list' ? { borderColor: 'cyan' } : {})}
+        borderColor={mode === 'saveFile' && focus === 'list' ? 'cyan' : undefined}
       >
         <VirtualTree
           nodes={items}
