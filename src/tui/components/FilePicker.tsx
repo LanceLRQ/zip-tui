@@ -77,7 +77,7 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
     } catch {
       raw = [];
     }
-    if (mode === 'openFile' && filterEnabled && lowerExts.length > 0) {
+    if ((mode === 'openFile' || mode === 'saveFile') && filterEnabled && lowerExts.length > 0) {
       raw = raw.filter((n) => n.isDir || matchesAnyExt(n.label, lowerExts));
     }
     if (mode === 'openDir') {
@@ -180,7 +180,7 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
         setCursor(0);
         return;
       }
-      if (input === '*' && mode === 'openFile') {
+      if (input === '*' && (mode === 'openFile' || mode === 'saveFile')) {
         setFilterEnabled((v) => !v);
         setCursor(0);
         return;
@@ -238,12 +238,14 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
         {...(mode === 'multiSelect' ? { selectedIds: selected } : {})}
       />
       {mode === 'multiSelect' && <Text>{t('picker.selected', { count: selected.size })}</Text>}
-      {mode === 'openFile' && filterExtensions && filterExtensions.length > 0 && (
-        <Text dimColor>
-          [{filterEnabled ? t('picker.filterOn') : t('picker.filterOff')}]{' '}
-          {filterEnabled ? filterExtensions.join(' ') : '*'}
-        </Text>
-      )}
+      {(mode === 'openFile' || mode === 'saveFile') &&
+        filterExtensions &&
+        filterExtensions.length > 0 && (
+          <Text dimColor>
+            [{filterEnabled ? t('picker.filterOn') : t('picker.filterOff')}]{' '}
+            {filterEnabled ? filterExtensions.join(' ') : '*'}
+          </Text>
+        )}
       {mode === 'saveFile' && (
         <Box>
           <Text>{t('picker.filename')}: </Text>

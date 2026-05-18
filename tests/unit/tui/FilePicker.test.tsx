@@ -158,6 +158,41 @@ describe('FilePicker', () => {
       expect(onConfirm).toHaveBeenCalledWith(path.join(tmp, 'out.zip'));
     });
 
+    it('honors filterExtensions to hide non-matching files in the list', () => {
+      const { lastFrame } = render(
+        <FilePicker
+          mode="saveFile"
+          initialPath={tmp}
+          filterExtensions={['.7z']}
+          onConfirm={() => {}}
+          onCancel={() => {}}
+        />,
+      );
+      const out = lastFrame() ?? '';
+      expect(out).toContain('data.7z');
+      expect(out).not.toContain('pkg.zip');
+      expect(out).not.toContain('doc.txt');
+      expect(out).toContain('archives only');
+    });
+
+    it('clears the empty-filename error when the user navigates directories', async () => {
+      const { lastFrame, stdin } = render(
+        <FilePicker
+          mode="saveFile"
+          initialPath={tmp}
+          defaultFilename="   "
+          onConfirm={() => {}}
+          onCancel={() => {}}
+        />,
+      );
+      stdin.write('d');
+      await flush();
+      expect(lastFrame()).toContain('Filename cannot be empty');
+      stdin.write('~');
+      await flush();
+      expect(lastFrame()).not.toContain('Filename cannot be empty');
+    });
+
     it('blocks confirm when filename is whitespace and surfaces the error', async () => {
       const onConfirm = vi.fn();
       const { lastFrame, stdin } = render(

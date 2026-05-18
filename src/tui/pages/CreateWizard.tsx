@@ -5,7 +5,7 @@ import { buildDefaultRegistry } from '../../engine/builder.js';
 import { streamCommand } from '../../engine/executor.js';
 import { createProgressTracker } from '../../engine/progress.js';
 import { startSizePoll } from '../../engine/sizePoll.js';
-import type { FormatId } from '../../engine/types.js';
+import { defaultArchiveName, FORMAT_EXTENSIONS, type FormatId } from '../../engine/types.js';
 import { useAppStore } from '../../store/index.js';
 import { CommandPreview } from '../components/CommandPreview.js';
 import { ExecutionMonitor } from '../components/ExecutionMonitor.js';
@@ -27,35 +27,39 @@ export const CreateWizard: React.FC = () => {
 
   useInput(
     (_input, key) => {
-      if (key.escape) wizard.prev();
+      if (key.escape && wizard.step === 0) setRoute('menu');
+      else if (key.escape && wizard.step >= 3 && wizard.step <= 4) wizard.prev();
     },
-    { isActive: wizard.step >= 2 && wizard.step <= 4 },
+    { isActive: wizard.step === 0 || (wizard.step >= 3 && wizard.step <= 4) },
   );
 
   if (wizard.step === 0) {
     return (
       <Box flexDirection="column">
-        <Text>{t('menu.create')} · 1/5</Text>
-        <FilePicker
-          mode="saveFile"
-          onConfirm={(p) => {
-            wizard.setArchive(p);
+        <Text>{t('menu.create')} · 1/5 format</Text>
+        <SelectInput
+          items={FORMATS}
+          onSelect={(it) => {
+            wizard.setFormat(it.value as FormatId);
             wizard.next();
           }}
-          onCancel={() => setRoute('menu')}
         />
+        <StatusBar hints={[{ key: 'Esc', label: t('common.back') }]} />
       </Box>
     );
   }
 
-  if (wizard.step === 1) {
+  if (wizard.step === 1 && wizard.format) {
+    const exts = [...FORMAT_EXTENSIONS[wizard.format]];
     return (
       <Box flexDirection="column">
         <Text>{t('menu.create')} · 2/5</Text>
         <FilePicker
-          mode="multiSelect"
-          onConfirm={(ids) => {
-            wizard.setInputs(ids);
+          mode="saveFile"
+          filterExtensions={exts}
+          defaultFilename={defaultArchiveName(wizard.format)}
+          onConfirm={(p) => {
+            wizard.setArchive(p);
             wizard.next();
           }}
           onCancel={() => wizard.prev()}
@@ -67,15 +71,15 @@ export const CreateWizard: React.FC = () => {
   if (wizard.step === 2) {
     return (
       <Box flexDirection="column">
-        <Text>3/5 format</Text>
-        <SelectInput
-          items={FORMATS}
-          onSelect={(it) => {
-            wizard.setFormat(it.value as FormatId);
+        <Text>{t('menu.create')} · 3/5</Text>
+        <FilePicker
+          mode="multiSelect"
+          onConfirm={(ids) => {
+            wizard.setInputs(ids);
             wizard.next();
           }}
+          onCancel={() => wizard.prev()}
         />
-        <StatusBar hints={[{ key: 'Esc', label: t('common.back') }]} />
       </Box>
     );
   }
