@@ -231,6 +231,18 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
     <Box flexDirection="column" borderStyle="round" paddingX={1}>
       <Text bold>{t(TITLE_KEYS[mode])}</Text>
       <Text dimColor>📂 {cwd}</Text>
+      {mode === 'saveFile' && (
+        <Box>
+          <Text>{t('picker.filename')}: </Text>
+          <TextInput
+            value={filename}
+            onChange={handleFilenameChange}
+            onSubmit={confirmSaveFile}
+            focus={focus === 'filename'}
+          />
+        </Box>
+      )}
+      {mode === 'saveFile' && error && <Text color="red">{error}</Text>}
       <VirtualTree
         nodes={items}
         pageSize={15}
@@ -246,18 +258,7 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
             {filterEnabled ? filterExtensions.join(' ') : '*'}
           </Text>
         )}
-      {mode === 'saveFile' && (
-        <Box>
-          <Text>{t('picker.filename')}: </Text>
-          <TextInput
-            value={filename}
-            onChange={handleFilenameChange}
-            onSubmit={confirmSaveFile}
-            focus={focus === 'filename'}
-          />
-        </Box>
-      )}
-      {error && <Text color="red">{error}</Text>}
+      {mode !== 'saveFile' && error && <Text color="red">{error}</Text>}
       <Text dimColor>{t('picker.hint')}</Text>
     </Box>
   );
