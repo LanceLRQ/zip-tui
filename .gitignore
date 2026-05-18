@@ -151,6 +151,9 @@ bun.lockb
 # editor
 .vscode/
 .idea/
+.cursor
+.codegraph
+.claude
 
 # os
 .DS_Store
