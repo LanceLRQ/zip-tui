@@ -39,4 +39,14 @@ describe('VirtualTree', () => {
     expect(lastFrame()).toContain('▶');
     expect(lastFrame()).toContain('[x]');
   });
+
+  it('omits the checkbox column when selectedIds is undefined', () => {
+    const { lastFrame } = render(
+      <VirtualTree nodes={nodes.slice(0, 3)} pageSize={5} selectedIndex={0} />,
+    );
+    const out = lastFrame() ?? '';
+    expect(out).not.toContain('[x]');
+    expect(out).not.toContain('[ ]');
+    expect(out).toContain('item-0');
+  });
 });

@@ -14,8 +14,8 @@ export interface VirtualTreeProps {
   nodes: TreeNode[];
   pageSize: number;
   selectedIndex: number;
-  selectedIds: Set<string>;
-  onToggle: (id: string) => void;
+  selectedIds?: Set<string>;
+  onToggle?: (id: string) => void;
 }
 
 export const VirtualTree: React.FC<VirtualTreeProps> = ({
@@ -30,6 +30,7 @@ export const VirtualTree: React.FC<VirtualTreeProps> = ({
   if (end - start < pageSize) start = Math.max(0, end - pageSize);
 
   const visible = nodes.slice(start, end);
+  const showCheckbox = selectedIds !== undefined;
 
   return (
     <Box flexDirection="column">
@@ -39,13 +40,13 @@ export const VirtualTree: React.FC<VirtualTreeProps> = ({
       {visible.map((n, idx) => {
         const absoluteIdx = start + idx;
         const isCursor = absoluteIdx === selectedIndex;
-        const isChecked = selectedIds.has(n.id);
+        const isChecked = selectedIds?.has(n.id) ?? false;
         const indent = '  '.repeat(n.depth ?? 0);
         return (
           <Box key={n.id}>
             <Text {...(isCursor ? { color: 'cyan' } : {})}>
               {isCursor ? '▶ ' : '  '}
-              {`[${isChecked ? 'x' : ' '}] `}
+              {showCheckbox ? `[${isChecked ? 'x' : ' '}] ` : ''}
               {indent}
               {n.isDir ? (n.expanded ? '▼ ' : '▶ ') : '  '}
               {n.label}
