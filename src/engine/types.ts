@@ -9,6 +9,8 @@ export type FormatId =
   | 'gz'
   | 'bz2';
 
+export const MVP_ARCHIVE_EXTENSIONS = ['.zip', '.7z', '.tar.gz', '.tgz', '.tar'] as const;
+
 export interface CreateOpts {
   archive: string;
   inputs: string[];

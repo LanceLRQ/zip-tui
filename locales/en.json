@@ -15,5 +15,18 @@
     "cancel": "Cancel",
     "copy": "Copy",
     "run": "Run"
+  },
+  "picker": {
+    "openFile": "Open file",
+    "openDir": "Open folder",
+    "saveFile": "Save as",
+    "multiSelect": "Select files",
+    "parent": "(parent)",
+    "selected": "Selected: {{count}}",
+    "filename": "Filename",
+    "filterOn": "archives only",
+    "filterOff": "all files",
+    "errorEmptyFilename": "Filename cannot be empty",
+    "hint": "↑↓ nav · Space toggle · Enter open/select · Tab focus · d confirm · a/c all/clear · ~/. jump · h hidden · * filter · Esc cancel"
   }
 }
