@@ -65,6 +65,7 @@ export const CreateWizard: React.FC = () => {
       <Box flexDirection="column">
         <Text>{t('menu.create')} · 2/5</Text>
         <FilePicker
+          key="create-archive"
           mode="saveFile"
           filterExtensions={exts}
           defaultFilename={defaultArchiveName(wizard.format)}
@@ -88,6 +89,7 @@ export const CreateWizard: React.FC = () => {
         </Text>
         {singleInput ? (
           <FilePicker
+            key="create-inputs-single"
             mode="openFile"
             onConfirm={(p) => {
               wizard.setInputs([p]);
@@ -97,6 +99,7 @@ export const CreateWizard: React.FC = () => {
           />
         ) : (
           <FilePicker
+            key="create-inputs-multi"
             mode="multiSelect"
             onConfirm={(ids) => {
               wizard.setInputs(ids);

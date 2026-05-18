@@ -28,6 +28,7 @@ export const ExtractWizard: React.FC = () => {
       <Box flexDirection="column">
         <Text>{t('menu.extract')} · 1/3</Text>
         <FilePicker
+          key="extract-archive"
           mode="openFile"
           filterExtensions={[...MVP_ARCHIVE_EXTENSIONS]}
           onConfirm={(p) => {
@@ -45,6 +46,7 @@ export const ExtractWizard: React.FC = () => {
       <Box flexDirection="column">
         <Text>{t('menu.extract')} · 2/3</Text>
         <FilePicker
+          key="extract-output"
           mode="openDir"
           initialPath={outputDir}
           onConfirm={(p) => {
