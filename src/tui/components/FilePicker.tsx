@@ -268,7 +268,10 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
       {mode === 'saveFile' && (
         <Box justifyContent="space-between">
           <Box flexShrink={1}>
-            <Text>{t('picker.filename')}: </Text>
+            <Text {...(focus === 'filename' ? { color: 'cyan', bold: true } : { dimColor: true })}>
+              {focus === 'filename' ? '▸ ' : '  '}
+              {t('picker.filename')}:{' '}
+            </Text>
             <TextInput
               value={filename}
               onChange={handleFilenameChange}
@@ -290,6 +293,7 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
         borderLeft={false}
         borderRight={false}
         marginY={0}
+        {...(mode === 'saveFile' && focus === 'list' ? { borderColor: 'cyan' } : {})}
       >
         <VirtualTree
           nodes={items}
