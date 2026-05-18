@@ -18,7 +18,8 @@ export async function runCommand(c: BuiltCommand): Promise<RunResult> {
   logger.info({ cmd: c.cmd, args: redactPassword(c.args) }, 'executor.start');
   const started = Date.now();
   try {
-    const proc = execa(c.cmd, c.args, { reject: false });
+    const stdoutOpt = c.outputFile ? { file: c.outputFile } : 'pipe';
+    const proc = execa(c.cmd, c.args, { reject: false, stdout: stdoutOpt });
     const r = await proc;
     const durationMs = Date.now() - started;
     logger.info({ cmd: c.cmd, exitCode: r.exitCode ?? -1, durationMs }, 'executor.complete');
@@ -41,7 +42,8 @@ export interface StreamHandle {
 }
 
 export function streamCommand(c: BuiltCommand): StreamHandle {
-  const proc = execa(c.cmd, c.args, { reject: false, stdout: 'pipe', stderr: 'pipe' });
+  const stdoutOpt = c.outputFile ? { file: c.outputFile } : 'pipe';
+  const proc = execa(c.cmd, c.args, { reject: false, stdout: stdoutOpt, stderr: 'pipe' });
   const queue: StreamEvent[] = [];
   const waiters: Array<(e: StreamEvent | null) => void> = [];
 

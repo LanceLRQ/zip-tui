@@ -9,7 +9,22 @@ export type FormatId =
   | 'gz'
   | 'bz2';
 
-export const MVP_ARCHIVE_EXTENSIONS = ['.zip', '.7z', '.tar.gz', '.tgz', '.tar'] as const;
+export const MVP_ARCHIVE_EXTENSIONS = [
+  '.zip',
+  '.7z',
+  '.tar.gz',
+  '.tgz',
+  '.tar.bz2',
+  '.tbz',
+  '.tbz2',
+  '.tar.xz',
+  '.txz',
+  '.tar.zst',
+  '.tzst',
+  '.tar',
+  '.gz',
+  '.bz2',
+] as const;
 
 export const FORMAT_EXTENSIONS: Record<FormatId, readonly string[]> = {
   zip: ['.zip'],
@@ -18,7 +33,7 @@ export const FORMAT_EXTENSIONS: Record<FormatId, readonly string[]> = {
   'tar.gz': ['.tar.gz', '.tgz'],
   'tar.bz2': ['.tar.bz2', '.tbz', '.tbz2'],
   'tar.xz': ['.tar.xz', '.txz'],
-  'tar.zst': ['.tar.zst'],
+  'tar.zst': ['.tar.zst', '.tzst'],
   gz: ['.gz'],
   bz2: ['.bz2'],
 };
@@ -48,6 +63,7 @@ export interface ExtractOpts {
 export interface BuiltCommand {
   cmd: string;
   args: string[];
+  outputFile?: string;
 }
 
 export interface ArchiveEntry {
