@@ -142,7 +142,7 @@ describe('FilePicker', () => {
       expect(out).toContain('archive.7z');
     });
 
-    it('confirms via d shortcut joining cwd + filename', async () => {
+    it('confirms via Enter while the filename input has focus', async () => {
       const onConfirm = vi.fn();
       const { stdin } = render(
         <FilePicker
@@ -153,6 +153,24 @@ describe('FilePicker', () => {
           onCancel={() => {}}
         />,
       );
+      stdin.write(KEY_ENTER);
+      await flush();
+      expect(onConfirm).toHaveBeenCalledWith(path.join(tmp, 'out.zip'));
+    });
+
+    it('still supports the d shortcut after switching focus back to the list', async () => {
+      const onConfirm = vi.fn();
+      const { stdin } = render(
+        <FilePicker
+          mode="saveFile"
+          initialPath={tmp}
+          defaultFilename="out.zip"
+          onConfirm={onConfirm}
+          onCancel={() => {}}
+        />,
+      );
+      stdin.write('\t');
+      await flush();
       stdin.write('d');
       await flush();
       expect(onConfirm).toHaveBeenCalledWith(path.join(tmp, 'out.zip'));
@@ -185,9 +203,11 @@ describe('FilePicker', () => {
           onCancel={() => {}}
         />,
       );
-      stdin.write('d');
+      stdin.write(KEY_ENTER);
       await flush();
       expect(lastFrame()).toContain('Filename cannot be empty');
+      stdin.write('\t');
+      await flush();
       stdin.write('~');
       await flush();
       expect(lastFrame()).not.toContain('Filename cannot be empty');
@@ -204,7 +224,7 @@ describe('FilePicker', () => {
           onCancel={() => {}}
         />,
       );
-      stdin.write('d');
+      stdin.write(KEY_ENTER);
       await flush();
       expect(onConfirm).not.toHaveBeenCalled();
       expect(lastFrame()).toContain('Filename cannot be empty');

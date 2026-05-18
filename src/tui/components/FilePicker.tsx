@@ -60,7 +60,9 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
   const [cursor, setCursor] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filename, setFilename] = useState(mode === 'saveFile' ? defaultFilename : '');
-  const [focus, setFocus] = useState<'list' | 'filename'>('list');
+  const [focus, setFocus] = useState<'list' | 'filename'>(
+    mode === 'saveFile' ? 'filename' : 'list',
+  );
   const [showHidden, setShowHidden] = useState(initialShowHidden);
   const [filterEnabled, setFilterEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
