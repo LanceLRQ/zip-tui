@@ -18,4 +18,11 @@ describe('MainMenu', () => {
     expect(out).toContain('设置');
     expect(out).toContain('退出');
   });
+
+  it('shows Esc as the quit shortcut and no stale q hint', () => {
+    const { lastFrame } = render(<MainMenu />);
+    const out = lastFrame() ?? '';
+    expect(out).toContain('Esc');
+    expect(out).not.toMatch(/\bq\b/);
+  });
 });

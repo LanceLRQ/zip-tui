@@ -1,4 +1,4 @@
-import { Box, Text } from 'ink';
+import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import type React from 'react';
 import { type AppRoute, useAppStore } from '../../store/index.js';
@@ -25,6 +25,10 @@ export const MainMenu: React.FC = () => {
     setRoute(item.value);
   };
 
+  useInput((_input, key) => {
+    if (key.escape) process.exit(0);
+  });
+
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
@@ -37,7 +41,7 @@ export const MainMenu: React.FC = () => {
         hints={[
           { key: '↑↓', label: t('common.next') },
           { key: 'Enter', label: t('common.confirm') },
-          { key: 'q', label: t('menu.quit') },
+          { key: 'Esc', label: t('menu.quit') },
         ]}
       />
     </Box>
