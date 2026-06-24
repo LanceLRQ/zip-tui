@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { Box, Text, useInput } from 'ink';
@@ -5,6 +6,7 @@ import TextInput from 'ink-text-input';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useT } from '../hooks/useI18n.js';
+import { type SelectedItem, SelectedList } from './SelectedList.js';
 import { listDirectoryAsNodes } from './useDirectoryTree.js';
 import { type TreeNode, VirtualTree } from './VirtualTree.js';
 
@@ -12,6 +14,7 @@ export type PickerMode = 'openFile' | 'openDir' | 'saveFile' | 'multiSelect';
 
 interface FilePickerCommonProps {
   initialPath?: string;
+  preselectPath?: string;
   filterExtensions?: string[];
   showHidden?: boolean;
   defaultFilename?: string;
@@ -29,6 +32,7 @@ export type FilePickerProps =
     });
 
 const PARENT_ID = '__parent__';
+const PAGE_SIZE = 15;
 
 const TITLE_KEYS: Record<PickerMode, string> = {
   openFile: 'picker.openFile',
@@ -50,15 +54,42 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
   const {
     mode,
     initialPath,
+    preselectPath,
     filterExtensions,
     showHidden: initialShowHidden = false,
     defaultFilename = 'archive.7z',
     onCancel,
   } = props;
   const t = useT();
-  const [cwd, setCwd] = useState(initialPath ?? process.cwd());
+  const [cwd, setCwd] = useState(
+    preselectPath ? path.dirname(preselectPath) : (initialPath ?? process.cwd()),
+  );
   const [cursor, setCursor] = useState(0);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // selected: O(1) checkbox lookup for VirtualTree; selectedItems: insertion-ordered render source
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    if (mode === 'multiSelect' && preselectPath) {
+      try {
+        fs.statSync(preselectPath);
+        return new Set([preselectPath]);
+      } catch {
+        // path does not exist → start empty
+      }
+    }
+    return new Set();
+  });
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>(() => {
+    if (mode === 'multiSelect' && preselectPath) {
+      try {
+        const isDir = fs.statSync(preselectPath).isDirectory();
+        return [{ path: preselectPath, isDir }];
+      } catch {
+        // path does not exist → start empty
+      }
+    }
+    return [];
+  });
+  const [paneFocus, setPaneFocus] = useState<'browse' | 'selected'>('browse');
+  const [selectedCursor, setSelectedCursor] = useState(0);
   const [filename, setFilename] = useState(mode === 'saveFile' ? defaultFilename : '');
   const [focus, setFocus] = useState<'list' | 'filename'>(
     mode === 'saveFile' ? 'filename' : 'list',
@@ -126,23 +157,21 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
     props.onConfirm(path.join(cwd, trimmed));
   };
 
-  const confirmCurrentDir = (): void => {
-    if (props.mode === 'openDir') props.onConfirm(cwd);
-  };
-
-  const confirmMulti = (): void => {
-    if (props.mode === 'multiSelect') props.onConfirm([...selected]);
-  };
-
   useInput(
     (input, key) => {
       if (key.escape) {
         onCancel();
         return;
       }
-      if (key.tab && mode === 'saveFile') {
-        setFocus('filename');
-        return;
+      if (key.tab) {
+        if (mode === 'saveFile') {
+          setFocus('filename');
+          return;
+        }
+        if (mode === 'multiSelect') {
+          setPaneFocus('selected');
+          return;
+        }
       }
       if (key.upArrow) {
         setCursor((c) => Math.max(0, c - 1));
@@ -157,15 +186,40 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
         if (node) enterNode(node);
         return;
       }
-      if (input === ' ' && mode === 'multiSelect') {
+      if (key.rightArrow) {
         const node = items[cursor];
-        if (node && node.id !== PARENT_ID) {
+        if (node) enterNode(node);
+        return;
+      }
+      if (key.leftArrow || key.backspace) {
+        if (!isRoot(cwd)) jumpTo(path.dirname(cwd));
+        return;
+      }
+      if (input === ' ') {
+        const node = items[cursor];
+        if (!node || node.id === PARENT_ID) return;
+        if (props.mode === 'openDir') {
+          if (node.isDir) props.onConfirm(node.id);
+          return;
+        }
+        if (props.mode === 'openFile') {
+          if (!node.isDir) props.onConfirm(node.id);
+          return;
+        }
+        if (mode === 'multiSelect') {
+          const id = node.id;
+          const exists = selectedItems.some((it) => it.path === id);
           setSelected((s) => {
             const n = new Set(s);
-            if (n.has(node.id)) n.delete(node.id);
-            else n.add(node.id);
+            if (n.has(id)) n.delete(id);
+            else n.add(id);
             return n;
           });
+          setSelectedItems((arr) =>
+            exists ? arr.filter((it) => it.path !== id) : [...arr, { path: id, isDir: node.isDir }],
+          );
+          if (!exists && error) setError(null);
+          return;
         }
         return;
       }
@@ -187,27 +241,51 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
         setCursor(0);
         return;
       }
-      if (input === 'd') {
-        if (mode === 'openDir') return confirmCurrentDir();
-        if (mode === 'multiSelect') return confirmMulti();
-        if (mode === 'saveFile') return confirmSaveFile();
-      }
-      if (input === 'a' && mode === 'multiSelect') {
-        setSelected((s) => {
-          const next = new Set(s);
-          for (const n of items) {
-            if (n.id !== PARENT_ID) next.add(n.id);
-          }
-          return next;
-        });
+    },
+    { isActive: focus === 'list' && !(mode === 'multiSelect' && paneFocus === 'selected') },
+  );
+
+  useInput(
+    (input, key) => {
+      if (key.escape) {
+        onCancel();
         return;
       }
-      if (input === 'c' && mode === 'multiSelect') {
-        setSelected((s) => (s.size === 0 ? s : new Set()));
+      if (key.tab) {
+        setPaneFocus('browse');
+        if (error) setError(null);
+        return;
+      }
+      if (key.upArrow) {
+        setSelectedCursor((c) => Math.max(0, c - 1));
+        return;
+      }
+      if (key.downArrow) {
+        setSelectedCursor((c) => Math.min(Math.max(0, selectedItems.length - 1), c + 1));
+        return;
+      }
+      if (key.return) {
+        if (selectedItems.length === 0) {
+          setError(t('picker.errorEmptySelection'));
+          return;
+        }
+        if (props.mode === 'multiSelect') props.onConfirm(selectedItems.map((it) => it.path));
+        return;
+      }
+      if (input === ' ' || input === 'd' || key.backspace) {
+        const target = selectedItems[selectedCursor];
+        if (!target) return;
+        setSelected((s) => {
+          const n = new Set(s);
+          n.delete(target.path);
+          return n;
+        });
+        setSelectedItems((arr) => arr.filter((_, i) => i !== selectedCursor));
+        setSelectedCursor((c) => Math.max(0, Math.min(c, selectedItems.length - 2)));
         return;
       }
     },
-    { isActive: focus === 'list' },
+    { isActive: mode === 'multiSelect' && paneFocus === 'selected' },
   );
 
   useInput(
@@ -247,11 +325,19 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
     return `[${t('picker.filterOn')}] ${head} +${rest}`;
   })();
 
+  const hintKey =
+    mode === 'multiSelect'
+      ? paneFocus === 'selected'
+        ? 'picker.hintSelected'
+        : 'picker.hintMulti'
+      : mode === 'saveFile'
+        ? 'picker.hintSave'
+        : 'picker.hintBrowse';
+
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1}>
       <Box justifyContent="space-between">
         <Text bold>{t(TITLE_KEYS[mode])}</Text>
-        {mode === 'multiSelect' && <Text>{t('picker.selected', { count: selected.size })}</Text>}
       </Box>
       <Box justifyContent="space-between">
         <Box flexShrink={1}>
@@ -287,22 +373,69 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
         </Box>
       )}
       {mode === 'saveFile' && error && <Text color="red">{error}</Text>}
-      <Box
-        flexDirection="column"
-        borderStyle="single"
-        borderLeft={false}
-        borderRight={false}
-        borderColor={mode === 'saveFile' && focus === 'list' ? 'cyan' : undefined}
-      >
-        <VirtualTree
-          nodes={items}
-          pageSize={15}
-          selectedIndex={cursor}
-          {...(mode === 'multiSelect' ? { selectedIds: selected } : {})}
-        />
-      </Box>
+      {mode === 'multiSelect' ? (
+        <Box flexDirection="row">
+          <Box
+            flexDirection="column"
+            flexGrow={1}
+            borderStyle="single"
+            borderColor={paneFocus === 'browse' ? 'cyan' : undefined}
+          >
+            <Text bold>{t('picker.browseTitle')}</Text>
+            <VirtualTree
+              nodes={items}
+              pageSize={PAGE_SIZE}
+              selectedIndex={cursor}
+              countLabel={t('picker.itemCount', {
+                total: items.length,
+                shown: Math.min(PAGE_SIZE, items.length),
+              })}
+              selectedIds={selected}
+              parentId={PARENT_ID}
+            />
+          </Box>
+          <Box
+            flexDirection="column"
+            flexGrow={1}
+            marginLeft={1}
+            borderStyle="single"
+            borderColor={paneFocus === 'selected' ? 'cyan' : undefined}
+          >
+            <Text bold>{t('picker.selectedTitle', { count: selectedItems.length })}</Text>
+            {selectedItems.length === 0 ? (
+              <Text dimColor>{t('picker.selectedEmpty')}</Text>
+            ) : (
+              <SelectedList
+                items={selectedItems}
+                cursor={selectedCursor}
+                pageSize={PAGE_SIZE}
+                focused={paneFocus === 'selected'}
+              />
+            )}
+          </Box>
+        </Box>
+      ) : (
+        <Box
+          flexDirection="column"
+          borderStyle="single"
+          borderLeft={false}
+          borderRight={false}
+          borderColor={mode === 'saveFile' && focus === 'list' ? 'cyan' : undefined}
+        >
+          <VirtualTree
+            nodes={items}
+            pageSize={PAGE_SIZE}
+            selectedIndex={cursor}
+            countLabel={t('picker.itemCount', {
+              total: items.length,
+              shown: Math.min(PAGE_SIZE, items.length),
+            })}
+            parentId={PARENT_ID}
+          />
+        </Box>
+      )}
       {mode !== 'saveFile' && error && <Text color="red">{error}</Text>}
-      <Text dimColor>{t('picker.hint')}</Text>
+      <Text dimColor>{t(hintKey)}</Text>
     </Box>
   );
 };

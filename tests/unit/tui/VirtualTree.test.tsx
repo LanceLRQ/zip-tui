@@ -26,7 +26,7 @@ describe('VirtualTree', () => {
     expect(out).not.toContain('item-50');
   });
 
-  it('shows selected indicator', () => {
+  it('shows the cursor and checkbox indicators', () => {
     const { lastFrame } = render(
       <VirtualTree
         nodes={nodes}
@@ -48,5 +48,42 @@ describe('VirtualTree', () => {
     expect(out).not.toContain('[x]');
     expect(out).not.toContain('[ ]');
     expect(out).toContain('item-0');
+  });
+
+  it('marks directories with a trailing Enter glyph and leaves files plain', () => {
+    const mixed: TreeNode[] = [
+      { id: 'd1', label: 'folder', isDir: true, size: 0 },
+      { id: 'f1', label: 'file.txt', isDir: false, size: 1 },
+    ];
+    const { lastFrame } = render(<VirtualTree nodes={mixed} pageSize={5} selectedIndex={0} />);
+    const out = lastFrame() ?? '';
+    expect(out).toContain('folder →');
+    expect(out).toContain('file.txt');
+    // the file row must not carry the directory marker
+    expect(out).not.toContain('file.txt →');
+  });
+
+  it('renders the parent entry without a checkbox', () => {
+    const withParent: TreeNode[] = [
+      { id: '__parent__', label: '..', isDir: true, size: 0 },
+      { id: 'd1', label: 'folder', isDir: true, size: 0 },
+    ];
+    const { lastFrame } = render(
+      <VirtualTree
+        nodes={withParent}
+        pageSize={5}
+        selectedIndex={0}
+        selectedIds={new Set()}
+        parentId="__parent__"
+      />,
+    );
+    const out = lastFrame() ?? '';
+    // the child directory still gets a checkbox; the parent does not
+    expect(out).toContain('[ ] folder');
+    expect(out).not.toContain('[ ] ..');
+    // the parent means "go up", so it carries no directory marker
+    expect(out).not.toContain('.. →');
+    // the real child directory still does
+    expect(out).toContain('folder →');
   });
 });

@@ -60,7 +60,7 @@ describe('CreateWizard', () => {
     const out = lastFrame() ?? '';
     expect(out).toContain('仅可选 1 个文件');
     expect(out).toContain('选择文件');
-    expect(out).not.toContain('选择文件（可多选）');
+    expect(out).not.toContain('选择要压缩的内容');
   });
 
   it('step 2 uses multiSelect picker for tar.gz format', () => {
@@ -70,7 +70,7 @@ describe('CreateWizard', () => {
     s.wizard.next();
     const { lastFrame } = render(<CreateWizard />);
     const out = lastFrame() ?? '';
-    expect(out).toContain('选择文件（可多选）');
+    expect(out).toContain('选择要压缩的内容');
     expect(out).not.toContain('仅可选 1 个文件');
   });
 });

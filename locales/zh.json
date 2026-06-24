@@ -20,14 +20,20 @@
     "openFile": "选择文件",
     "openDir": "选择文件夹",
     "saveFile": "保存为",
-    "multiSelect": "选择文件（可多选）",
-    "parent": "(返回上级)",
-    "selected": "已选 {{count}} 项",
+    "multiSelect": "选择要压缩的内容",
+    "selectedTitle": "已选 ({{count}})",
+    "selectedEmpty": "用 Space 添加要压缩的内容",
+    "browseTitle": "浏览",
     "filename": "文件名",
     "filterOn": "仅显示归档文件",
     "filterOff": "显示全部文件",
     "errorEmptyFilename": "文件名不能为空",
+    "errorEmptySelection": "至少选择一项",
     "singleInputHint": "仅可选 1 个文件",
-    "hint": "↑↓移动 · Space选择 · Enter进入/选择 · Tab切焦点 · d确认 · a/c全选/清空 · ~/. 跳转 · h隐藏文件 · * 过滤 · Esc取消"
+    "itemCount": "{{total}} 项, 显示 {{shown}}",
+    "hintBrowse": "Enter/→ 进入 · ← 返回 · Space 选择 · ~/. 跳转 · h 隐藏 · * 过滤 · Esc 取消",
+    "hintMulti": "Enter/→ 进入 · ← 返回 · Space 选择 · Tab 切到已选区 · Esc 取消",
+    "hintSelected": "Enter 提交 · Space/d 移除 · Tab 返回浏览 · Esc 取消",
+    "hintSave": "Enter/→ 进入 · ← 返回 · ~/. 跳转 · h 隐藏 · * 过滤 · Tab 文件名 · Esc 取消"
   }
 }

@@ -20,14 +20,20 @@
     "openFile": "Open file",
     "openDir": "Open folder",
     "saveFile": "Save as",
-    "multiSelect": "Select files",
-    "parent": "(parent)",
-    "selected": "Selected: {{count}}",
+    "multiSelect": "Choose what to compress",
+    "selectedTitle": "Selected ({{count}})",
+    "selectedEmpty": "Press Space to add items to compress",
+    "browseTitle": "Browse",
     "filename": "Filename",
     "filterOn": "archives only",
     "filterOff": "all files",
     "errorEmptyFilename": "Filename cannot be empty",
+    "errorEmptySelection": "Select at least one item",
     "singleInputHint": "single file only",
-    "hint": "↑↓ nav · Space toggle · Enter open/select · Tab focus · d confirm · a/c all/clear · ~/. jump · h hidden · * filter · Esc cancel"
+    "itemCount": "{{total}} items, showing {{shown}}",
+    "hintBrowse": "Enter/→ open · ← up · Space select · ~/. jump · h hidden · * filter · Esc cancel",
+    "hintMulti": "Enter/→ open · ← up · Space select · Tab to selected · Esc cancel",
+    "hintSelected": "Enter submit · Space/d remove · Tab back to browse · Esc cancel",
+    "hintSave": "Enter/→ open · ← up · ~/. jump · h hidden · * filter · Tab filename · Esc cancel"
   }
 }

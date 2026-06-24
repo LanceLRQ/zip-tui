@@ -101,6 +101,7 @@ export const CreateWizard: React.FC = () => {
           <FilePicker
             key="create-inputs-multi"
             mode="multiSelect"
+            initialPath={process.cwd()}
             onConfirm={(ids) => {
               wizard.setInputs(ids);
               wizard.next();
