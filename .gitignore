@@ -144,6 +144,7 @@ vite.config.ts.timestamp-*
 
 CLAUDE.local.md
 plans/
+docs/superpowers/
 
 # bun
 bun.lockb
