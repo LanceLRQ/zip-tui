@@ -8,6 +8,7 @@ import { useAppStore } from '../../store/index.js';
 import {
   type ArchiveListing,
   buildArchiveTree,
+  collapseParent,
   entriesToFlatNodes,
   flattenTree,
   initialExpanded,
@@ -78,6 +79,18 @@ export const ViewPage: React.FC = () => {
       }
 
       const node = nodes[safeCursor];
+
+      if (mode === 'tree') {
+        // close the folder the cursor sits in, without scrolling back up to it
+        if (input === '-') {
+          const res = collapseParent(nodes, safeCursor, expanded);
+          if (res) {
+            setExpanded(res.expanded);
+            setCursor(res.cursor);
+          }
+          return;
+        }
+      }
 
       if (mode === 'tree' && node) {
         if (key.rightArrow) {
@@ -163,7 +176,10 @@ export const ViewPage: React.FC = () => {
         )}
       </Box>
       <Box marginTop={1}>
-        <Text dimColor>{t(mode === 'tree' ? 'view.hintTree' : 'view.hintFlat')}</Text>
+        {/* truncate rather than wrap: the chrome budget assumes a single line */}
+        <Text dimColor wrap="truncate">
+          {t(mode === 'tree' ? 'view.hintTree' : 'view.hintFlat')}
+        </Text>
       </Box>
     </Box>
   );

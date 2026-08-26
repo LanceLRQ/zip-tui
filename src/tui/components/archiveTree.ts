@@ -200,6 +200,40 @@ export function parentPathOf(nodePath: string): string | null {
   return cut <= 0 ? null : nodePath.slice(0, cut);
 }
 
+export interface CollapseParentResult {
+  expanded: Set<string>;
+  cursor: number;
+}
+
+/**
+ * Closes the directory containing the cursor and moves the cursor onto it.
+ *
+ * Deep inside a long directory you would otherwise have to scroll all the way
+ * back up to the folder row before you could close it. Repeated calls walk up
+ * one level at a time.
+ *
+ * Returns null when there is nothing to do — a top-level row has no parent —
+ * so the caller can leave the key press unhandled.
+ *
+ * The parent's row index is unaffected by the collapse (nothing above it
+ * changes), so the index found here stays correct once the list re-renders.
+ */
+export function collapseParent(
+  nodes: readonly TreeNode[],
+  cursor: number,
+  expanded: ReadonlySet<string>,
+): CollapseParentResult | null {
+  const node = nodes[cursor];
+  if (!node) return null;
+  const parent = parentPathOf(node.id);
+  if (parent === null) return null;
+  const parentIndex = nodes.findIndex((n) => n.id === parent);
+  if (parentIndex < 0) return null;
+  const next = new Set(expanded);
+  next.delete(parent);
+  return { expanded: next, cursor: parentIndex };
+}
+
 export interface ArchiveListing {
   ok: boolean;
   /** Raw entries; the caller decides whether to show them flat or as a tree. */

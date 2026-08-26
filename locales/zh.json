@@ -21,7 +21,7 @@
     "empty": "归档为空",
     "failed": "读取失败",
     "itemCount": "{{total}} 项, 显示 {{shown}}",
-    "hintTree": "↑↓ 移动 · →/Enter 展开 · ← 折叠 · PgUp/PgDn 翻页 · g/G 首/尾 · t 列表 · Esc 返回",
+    "hintTree": "↑↓ 移动 · →/Enter 展开 · ← 折叠 · - 折叠父级 · PgUp/PgDn 翻页 · g/G 首尾 · t 列表 · Esc 返回",
     "hintFlat": "↑↓ 移动 · PgUp/PgDn 翻页 · g/G 首/尾 · t 树形 · Esc 返回"
   },
   "picker": {
