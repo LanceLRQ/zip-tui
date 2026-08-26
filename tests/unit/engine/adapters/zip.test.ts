@@ -82,6 +82,34 @@ Archive:  out.zip
     expect(entries[2]).toMatchObject({ path: 'docs/', isDir: true });
   });
 
+  // Info-ZIP's unzip prints MM-DD-YYYY, not ISO. This is verbatim output from
+  // /usr/bin/unzip on macOS 15.
+  it('parses the MM-DD-YYYY date format real unzip emits', () => {
+    const stdout = `Archive:  /tmp/t.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+        0  08-26-2026 10:49   src/
+       10  08-26-2026 10:49   src/file-3.txt
+       10  08-26-2026 10:49   src/file-2.txt
+---------                     -------
+       30                     4 files
+`;
+    const entries = zipAdapter.parseList(stdout);
+    expect(entries).toHaveLength(3);
+    expect(entries[0]).toMatchObject({ path: 'src/', size: 0, isDir: true });
+    expect(entries[1]).toMatchObject({ path: 'src/file-3.txt', size: 10, isDir: false });
+  });
+
+  it('does not mistake the summary footer for an entry', () => {
+    const stdout = `  Length      Date    Time    Name
+---------  ---------- -----   ----
+       10  08-26-2026 10:49   a.txt
+---------                     -------
+       30                     4 files
+`;
+    expect(zipAdapter.parseList(stdout).map((e) => e.path)).toEqual(['a.txt']);
+  });
+
   it('parses progress line', () => {
     const p = zipAdapter.parseProgress?.('  adding: src/index.ts (deflated 45%)');
     expect(p).toMatchObject({ current: 1, total: 0 });
