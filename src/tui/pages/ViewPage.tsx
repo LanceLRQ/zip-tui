@@ -15,6 +15,7 @@ import {
   loadArchiveListing,
   parentPathOf,
 } from '../components/archiveTree.js';
+import { Divider } from '../components/Divider.js';
 import { EntryDetails } from '../components/EntryDetails.js';
 import { FilePicker } from '../components/FilePicker.js';
 import { fitPageSize } from '../components/fitPageSize.js';
@@ -24,9 +25,10 @@ import { useT } from '../hooks/useI18n.js';
 import { useTerminalRows } from '../hooks/useTerminalRows.js';
 
 // rows this page spends on things that are not list entries: the app's padding
-// (2), the archive path (1), the gap above the list (1), the item count (1),
-// the gap plus the two-line detail bar (3), and the hint line (1)
-const CHROME_ROWS = 9;
+// (2), the archive path (1), the rule under it (1), the item count (1), the gap
+// plus the two-line detail bar (3), the rule above the hint (1), and the hint
+// itself (1)
+export const CHROME_ROWS = 10;
 
 type ViewMode = 'tree' | 'flat';
 
@@ -175,10 +177,11 @@ export const ViewPage: React.FC = () => {
 
   return (
     <Box flexDirection="column">
-      <Text>
+      <Text wrap="truncate-start">
         {t('menu.view')}: {archive}
       </Text>
-      <Box flexDirection="column" marginTop={1}>
+      <Divider />
+      <Box flexDirection="column">
         {listing === null ? (
           <Text dimColor>{t('view.loading')}</Text>
         ) : !listing.ok ? (
@@ -218,6 +221,7 @@ export const ViewPage: React.FC = () => {
           emptyLabel={t('view.detailEmpty')}
         />
       </Box>
+      <Divider />
       {/* truncate rather than wrap: the chrome budget assumes a single line */}
       <Text dimColor wrap="truncate">
         {t(mode === 'tree' ? 'view.hintTree' : 'view.hintFlat')}
