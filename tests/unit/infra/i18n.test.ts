@@ -33,7 +33,13 @@ describe('i18n', () => {
   });
 
   it('resolves view keys rather than echoing the key name back', () => {
-    for (const key of ['view.loading', 'view.empty', 'view.failed', 'view.hint']) {
+    for (const key of [
+      'view.loading',
+      'view.empty',
+      'view.failed',
+      'view.hintTree',
+      'view.hintFlat',
+    ]) {
       expect(t(key)).not.toBe(key);
     }
     expect(t('view.itemCount', { total: 7, shown: 3 })).toContain('7');

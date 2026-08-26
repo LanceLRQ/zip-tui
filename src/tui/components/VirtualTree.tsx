@@ -25,6 +25,8 @@ export interface VirtualTreeProps {
   countLabel?: string;
   showSize?: boolean;
   showDirMarker?: boolean;
+  /** Prefix directories with an open/closed caret, for tree views. */
+  showExpandMarker?: boolean;
 }
 
 // trailing marker on directory rows: a right arrow signalling the row can be opened
@@ -33,6 +35,10 @@ const DIR_MARKER = ' →';
 const CHECKBOX_GAP = '    ';
 // widest value the size column has to hold is "1024.0 G"
 const SIZE_WIDTH = 8;
+// carets for a tree view; files get blanks so their names stay in the same column
+const CARET_OPEN = '▾ ';
+const CARET_SHUT = '▸ ';
+const CARET_GAP = '  ';
 
 export const VirtualTree: React.FC<VirtualTreeProps> = ({
   nodes,
@@ -43,6 +49,7 @@ export const VirtualTree: React.FC<VirtualTreeProps> = ({
   countLabel,
   showSize = false,
   showDirMarker = true,
+  showExpandMarker = false,
 }) => {
   const half = Math.floor(pageSize / 2);
   let start = Math.max(0, selectedIndex - half);
@@ -69,6 +76,13 @@ export const VirtualTree: React.FC<VirtualTreeProps> = ({
         const sizeCol = showSize
           ? `${(n.sizeLabel ?? formatSize(n.size)).padStart(SIZE_WIDTH)}  `
           : '';
+        const caret = showExpandMarker
+          ? n.isDir
+            ? n.expanded
+              ? CARET_OPEN
+              : CARET_SHUT
+            : CARET_GAP
+          : '';
         return (
           <Box key={n.id}>
             <Text {...(isCursor ? { color: 'cyan' } : {})}>
@@ -76,7 +90,10 @@ export const VirtualTree: React.FC<VirtualTreeProps> = ({
               {checkbox}
             </Text>
             {showSize ? <Text dimColor={!isCursor}>{sizeCol}</Text> : null}
-            <Text {...(isCursor ? { color: 'cyan' } : {})}>{indent}</Text>
+            <Text {...(isCursor ? { color: 'cyan' } : {})}>
+              {indent}
+              {caret}
+            </Text>
             <Text {...(isCursor ? { color: 'cyan' } : {})} bold={n.isDir}>
               {n.label}
               {n.isDir && !isParent && showDirMarker ? DIR_MARKER : ''}

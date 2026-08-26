@@ -109,6 +109,46 @@ describe('VirtualTree', () => {
     expect(out).not.toContain('→');
   });
 
+  it('marks open and closed directories when showExpandMarker is set', () => {
+    const nested: TreeNode[] = [
+      { id: 'd1', label: 'open', isDir: true, size: 0, expanded: true },
+      { id: 'd2', label: 'shut', isDir: true, size: 0, expanded: false },
+      { id: 'f1', label: 'plain.txt', isDir: false, size: 1 },
+    ];
+    const { lastFrame } = render(
+      <VirtualTree nodes={nested} pageSize={5} selectedIndex={0} showExpandMarker />,
+    );
+    const out = lastFrame() ?? '';
+    expect(out).toContain('▾ open');
+    expect(out).toContain('▸ shut');
+    // a file has no marker, but still lines up with the directories
+    expect(out).not.toContain('▸ plain.txt');
+    expect(out).not.toContain('▾ plain.txt');
+    expect(out).toContain('  plain.txt');
+  });
+
+  it('leaves the expand marker off by default', () => {
+    const dirs: TreeNode[] = [{ id: 'd1', label: 'docs', isDir: true, size: 0, expanded: true }];
+    const { lastFrame } = render(<VirtualTree nodes={dirs} pageSize={5} selectedIndex={0} />);
+    const out = lastFrame() ?? '';
+    expect(out).not.toContain('▾');
+    expect(out).not.toContain('▸');
+  });
+
+  it('indents nested rows by depth', () => {
+    const nested: TreeNode[] = [
+      { id: 'a', label: 'root', isDir: true, size: 0, depth: 0, expanded: true },
+      { id: 'a/b', label: 'child', isDir: false, size: 0, depth: 2 },
+    ];
+    const { lastFrame } = render(
+      <VirtualTree nodes={nested} pageSize={5} selectedIndex={0} showExpandMarker />,
+    );
+    const lines = (lastFrame() ?? '').split('\n');
+    const rootLine = lines.find((l) => l.includes('root')) ?? '';
+    const childLine = lines.find((l) => l.includes('child')) ?? '';
+    expect(childLine.indexOf('child')).toBeGreaterThan(rootLine.indexOf('root'));
+  });
+
   it('renders the parent entry without a checkbox', () => {
     const withParent: TreeNode[] = [
       { id: '__parent__', label: '..', isDir: true, size: 0 },

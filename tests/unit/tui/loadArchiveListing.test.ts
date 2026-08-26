@@ -26,14 +26,14 @@ function registryWith(entries: ArchiveEntry[]) {
 const ok = (stdout: string) => async () => ({ exitCode: 0, stdout, stderr: '' });
 
 describe('loadArchiveListing', () => {
-  it('turns a successful listing into nodes', async () => {
+  it('hands back the parsed entries on success', async () => {
     const r = registryWith([
       { path: 'a.txt', size: 10, isDir: false },
       { path: 'docs/', size: 0, isDir: true },
     ]);
     const res = await loadArchiveListing('x.zip', r, ok('irrelevant'));
     expect(res.ok).toBe(true);
-    expect(res.nodes.map((n) => n.label)).toEqual(['a.txt', 'docs/']);
+    expect(res.entries.map((e) => e.path)).toEqual(['a.txt', 'docs/']);
   });
 
   it('reports an unrecognised extension without running anything', async () => {
@@ -57,7 +57,7 @@ describe('loadArchiveListing', () => {
     }));
     expect(res.ok).toBe(false);
     expect(res.error).toContain('unzip: incorrect password');
-    expect(res.nodes).toEqual([]);
+    expect(res.entries).toEqual([]);
   });
 
   it('falls back to the exit code when stderr is silent', async () => {
@@ -75,7 +75,7 @@ describe('loadArchiveListing', () => {
     const r = registryWith([]);
     const res = await loadArchiveListing('x.zip', r, ok(''));
     expect(res.ok).toBe(true);
-    expect(res.nodes).toEqual([]);
+    expect(res.entries).toEqual([]);
   });
 
   it('reports a thrown spawn failure instead of propagating it', async () => {

@@ -42,9 +42,168 @@ export function entriesToFlatNodes(entries: ArchiveEntry[]): TreeNode[] {
   return out;
 }
 
+export interface ArchiveTreeNode {
+  /** Full path inside the archive; unique, and used as the node's id. */
+  path: string;
+  /** Last path segment — what the tree view shows. */
+  name: string;
+  isDir: boolean;
+  /** Own size for a file; the sum of the subtree for a directory. */
+  size: number;
+  children: ArchiveTreeNode[];
+}
+
+interface MutableNode extends ArchiveTreeNode {
+  children: MutableNode[];
+  childIndex: Map<string, MutableNode>;
+}
+
+function makeNode(path: string, name: string, isDir: boolean): MutableNode {
+  return { path, name, isDir, size: 0, children: [], childIndex: new Map() };
+}
+
+/**
+ * Splits an archive path into clean segments.
+ *
+ * Tools are inconsistent about how they render paths: zip suffixes directories
+ * with a slash, some tars prefix `./`, and absolute inputs can leave a leading
+ * slash behind. Empty segments from any of these would otherwise become
+ * nameless tree levels.
+ */
+function segmentsOf(rawPath: string): string[] {
+  return rawPath
+    .trim()
+    .split('/')
+    .filter((s) => s !== '' && s !== '.');
+}
+
+/** Directories first, then files; alphabetical within each group. */
+function sortTree(nodes: MutableNode[]): void {
+  nodes.sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  for (const n of nodes) sortTree(n.children);
+}
+
+/** Rolls file sizes up into every ancestor directory, returning the subtotal. */
+function accumulateSizes(nodes: MutableNode[]): number {
+  let total = 0;
+  for (const n of nodes) {
+    if (n.children.length > 0) {
+      // a directory's own reported size is always 0, so the subtree is the
+      // only meaningful figure
+      n.size = accumulateSizes(n.children);
+    }
+    total += n.size;
+  }
+  return total;
+}
+
+function strip(node: MutableNode): ArchiveTreeNode {
+  return {
+    path: node.path,
+    name: node.name,
+    isDir: node.isDir,
+    size: node.size,
+    children: node.children.map(strip),
+  };
+}
+
+/**
+ * Turns a flat entry list into a directory tree.
+ *
+ * Intermediate directories are inferred from the paths themselves, because an
+ * archive is not obliged to contain entries for them — `zip -D` omits them
+ * entirely, and relying on them would silently drop whole branches.
+ */
+export function buildArchiveTree(entries: ArchiveEntry[]): ArchiveTreeNode[] {
+  const roots: MutableNode[] = [];
+  const rootIndex = new Map<string, MutableNode>();
+
+  for (const entry of entries) {
+    const segments = segmentsOf(entry.path);
+    if (segments.length === 0) continue;
+
+    let siblings = roots;
+    let index = rootIndex;
+    let prefix = '';
+
+    segments.forEach((segment, depth) => {
+      const isLast = depth === segments.length - 1;
+      prefix = prefix === '' ? segment : `${prefix}/${segment}`;
+      let node = index.get(segment);
+      if (!node) {
+        // anything that still has a path below it is a directory, whatever the
+        // entry claimed to be
+        node = makeNode(prefix, segment, !isLast || entry.isDir);
+        index.set(segment, node);
+        siblings.push(node);
+      } else if (!isLast) {
+        node.isDir = true;
+      }
+      if (isLast && !entry.isDir) node.size = entry.size;
+      siblings = node.children;
+      index = node.childIndex;
+    });
+  }
+
+  accumulateSizes(roots);
+  sortTree(roots);
+  return roots.map(strip);
+}
+
+/**
+ * Flattens the tree into the rows the view renders, descending only into
+ * directories present in `expanded`.
+ *
+ * A node under a closed ancestor stays hidden regardless of its own state, so
+ * reopening a directory restores whatever was expanded inside it.
+ */
+export function flattenTree(
+  tree: readonly ArchiveTreeNode[],
+  expanded: ReadonlySet<string>,
+  depth = 0,
+): TreeNode[] {
+  const out: TreeNode[] = [];
+  for (const node of tree) {
+    const isOpen = node.isDir && expanded.has(node.path);
+    out.push({
+      id: node.path,
+      label: node.name,
+      isDir: node.isDir,
+      size: node.size,
+      depth,
+      expanded: isOpen,
+      sizeLabel: formatSize(node.size),
+    });
+    if (isOpen) out.push(...flattenTree(node.children, expanded, depth + 1));
+  }
+  return out;
+}
+
+/**
+ * Which directories start out open.
+ *
+ * Archives usually wrap their contents in a single folder; leaving that shut
+ * would show the user one useless row, so it opens by default. Anything with a
+ * broader root stays closed to keep the first screen readable.
+ */
+export function initialExpanded(tree: readonly ArchiveTreeNode[]): Set<string> {
+  const only = tree.length === 1 ? tree[0] : undefined;
+  return only?.isDir ? new Set([only.path]) : new Set();
+}
+
+/** Enclosing directory of an archive path, or null for a top-level entry. */
+export function parentPathOf(nodePath: string): string | null {
+  const cut = nodePath.lastIndexOf('/');
+  return cut <= 0 ? null : nodePath.slice(0, cut);
+}
+
 export interface ArchiveListing {
   ok: boolean;
-  nodes: TreeNode[];
+  /** Raw entries; the caller decides whether to show them flat or as a tree. */
+  entries: ArchiveEntry[];
   error?: string;
 }
 
@@ -62,17 +221,17 @@ export async function loadArchiveListing(
 ): Promise<ArchiveListing> {
   const fmt = detectFormatFromExtension(archive);
   if (!fmt) {
-    return { ok: false, nodes: [], error: `cannot detect archive format: ${archive}` };
+    return { ok: false, entries: [], error: `cannot detect archive format: ${archive}` };
   }
   try {
     const adapter = registry.get(fmt);
     const res = await run(adapter.buildList(archive));
     if (res.exitCode !== 0) {
       const detail = res.stderr.trim() || `exit code ${res.exitCode}`;
-      return { ok: false, nodes: [], error: detail };
+      return { ok: false, entries: [], error: detail };
     }
-    return { ok: true, nodes: entriesToFlatNodes(adapter.parseList(res.stdout)) };
+    return { ok: true, entries: adapter.parseList(res.stdout) };
   } catch (err) {
-    return { ok: false, nodes: [], error: String(err) };
+    return { ok: false, entries: [], error: String(err) };
   }
 }
