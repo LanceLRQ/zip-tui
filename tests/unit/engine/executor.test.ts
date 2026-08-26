@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { renderDryRun, runCommand, streamCommand } from '../../../src/engine/executor';
+
+// every possible byte value, including the ones that are not valid UTF-8 —
+// a decoding round-trip turns those into U+FFFD and inflates the file
+const ALL_BYTES = Buffer.from(Array.from({ length: 256 }, (_, i) => i));
 
 describe('renderDryRun', () => {
   it('quotes args with spaces', () => {
@@ -27,6 +34,50 @@ describe('runCommand', () => {
   it('returns nonzero exit for false', async () => {
     const r = await runCommand({ cmd: 'false', args: [] });
     expect(r.exitCode).not.toBe(0);
+  });
+});
+
+describe('outputFile redirection', () => {
+  let tmp: string;
+  let src: string;
+
+  beforeAll(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'zt-bin-'));
+    src = path.join(tmp, 'source.bin');
+    fs.writeFileSync(src, ALL_BYTES);
+  });
+
+  afterAll(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('runCommand writes binary stdout byte-for-byte', async () => {
+    const dst = path.join(tmp, 'run.bin');
+    const r = await runCommand({ cmd: 'cat', args: [src], outputFile: dst });
+    expect(r.exitCode).toBe(0);
+    expect(fs.readFileSync(dst).equals(ALL_BYTES)).toBe(true);
+  });
+
+  it('streamCommand writes binary stdout byte-for-byte', async () => {
+    const dst = path.join(tmp, 'stream.bin');
+    const handle = streamCommand({ cmd: 'cat', args: [src], outputFile: dst });
+    let exitCode = -2;
+    for await (const ev of handle.events) {
+      if (ev.type === 'exit') exitCode = ev.exitCode ?? -1;
+    }
+    expect(exitCode).toBe(0);
+    expect(fs.readFileSync(dst).equals(ALL_BYTES)).toBe(true);
+  });
+
+  it('still reports a non-zero exit when redirecting', async () => {
+    const dst = path.join(tmp, 'fail.bin');
+    const r = await runCommand({
+      cmd: 'cat',
+      args: [path.join(tmp, 'does-not-exist')],
+      outputFile: dst,
+    });
+    expect(r.exitCode).not.toBe(0);
+    expect(r.stderr).not.toBe('');
   });
 });
 
