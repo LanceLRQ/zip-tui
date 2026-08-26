@@ -4,20 +4,39 @@ import { useState } from 'react';
 import { buildDefaultRegistry } from '../../engine/builder.js';
 import { runCommand } from '../../engine/executor.js';
 import { MVP_ARCHIVE_EXTENSIONS } from '../../engine/types.js';
-import { resolveListCommand } from '../../runner/direct.js';
 import { useAppStore } from '../../store/index.js';
+import { type ArchiveListing, loadArchiveListing } from '../components/archiveTree.js';
 import { FilePicker } from '../components/FilePicker.js';
+import { moveCursor, type ScrollAction } from '../components/scrollCursor.js';
+import { VirtualTree } from '../components/VirtualTree.js';
 import { useT } from '../hooks/useI18n.js';
+
+const PAGE_SIZE = 15;
 
 export const ViewPage: React.FC = () => {
   const t = useT();
   const setRoute = useAppStore((s) => s.setRoute);
   const [archive, setArchive] = useState('');
-  const [entries, setEntries] = useState<string[]>([]);
+  const [listing, setListing] = useState<ArchiveListing | null>(null);
+  const [cursor, setCursor] = useState(0);
+
+  const nodes = listing?.nodes ?? [];
+  const total = nodes.length;
 
   useInput(
-    (_input, key) => {
-      if (key.escape) setRoute('menu');
+    (input, key) => {
+      if (key.escape) {
+        setRoute('menu');
+        return;
+      }
+      let action: ScrollAction | null = null;
+      if (key.upArrow) action = 'up';
+      else if (key.downArrow) action = 'down';
+      else if (key.pageUp) action = 'pageUp';
+      else if (key.pageDown) action = 'pageDown';
+      else if (input === 'g') action = 'home';
+      else if (input === 'G') action = 'end';
+      if (action) setCursor((c) => moveCursor(c, total, action, PAGE_SIZE));
     },
     { isActive: archive !== '' },
   );
@@ -31,10 +50,9 @@ export const ViewPage: React.FC = () => {
           filterExtensions={[...MVP_ARCHIVE_EXTENSIONS]}
           onConfirm={async (p) => {
             setArchive(p);
-            const r = buildDefaultRegistry();
-            const cmd = resolveListCommand(r, p);
-            const out = await runCommand(cmd);
-            setEntries(out.stdout.split('\n').slice(0, 50));
+            setListing(null);
+            setCursor(0);
+            setListing(await loadArchiveListing(p, buildDefaultRegistry(), runCommand));
           }}
           onCancel={() => setRoute('menu')}
         />
@@ -48,9 +66,30 @@ export const ViewPage: React.FC = () => {
         {t('menu.view')}: {archive}
       </Text>
       <Box flexDirection="column" marginTop={1}>
-        {entries.map((line) => (
-          <Text key={line}>{line}</Text>
-        ))}
+        {listing === null ? (
+          <Text dimColor>{t('view.loading')}</Text>
+        ) : !listing.ok ? (
+          <Text color="red">
+            {t('view.failed')}: {listing.error}
+          </Text>
+        ) : total === 0 ? (
+          <Text dimColor>{t('view.empty')}</Text>
+        ) : (
+          <VirtualTree
+            nodes={nodes}
+            pageSize={PAGE_SIZE}
+            selectedIndex={cursor}
+            showSize
+            showDirMarker={false}
+            countLabel={t('view.itemCount', {
+              total,
+              shown: Math.min(PAGE_SIZE, total),
+            })}
+          />
+        )}
+      </Box>
+      <Box marginTop={1}>
+        <Text dimColor>{t('view.hint')}</Text>
       </Box>
     </Box>
   );

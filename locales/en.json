@@ -16,6 +16,13 @@
     "copy": "Copy",
     "run": "Run"
   },
+  "view": {
+    "loading": "Reading archive...",
+    "empty": "Archive is empty",
+    "failed": "Failed to read",
+    "itemCount": "{{total}} items, showing {{shown}}",
+    "hint": "↑↓ move · PgUp/PgDn page · g/G first/last · Esc back"
+  },
   "picker": {
     "openFile": "Open file",
     "openDir": "Open folder",

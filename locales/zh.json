@@ -16,6 +16,13 @@
     "copy": "复制",
     "run": "执行"
   },
+  "view": {
+    "loading": "正在读取归档...",
+    "empty": "归档为空",
+    "failed": "读取失败",
+    "itemCount": "{{total}} 项, 显示 {{shown}}",
+    "hint": "↑↓ 移动 · PgUp/PgDn 翻页 · g/G 首/尾 · Esc 返回"
+  },
   "picker": {
     "openFile": "选择文件",
     "openDir": "选择文件夹",
