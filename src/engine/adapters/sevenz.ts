@@ -1,4 +1,5 @@
 import type { ArchiveEntry, FormatAdapter, Progress } from '../types.js';
+import { parseIsoDateTime } from './dateUtils.js';
 
 export const sevenzAdapter: FormatAdapter = {
   id: '7z',
@@ -51,10 +52,18 @@ export const sevenzAdapter: FormatAdapter = {
       if (!inTable) continue;
       const m = line.match(/^(\S+\s+\S+)\s+(\S+)\s+(\d+)\s+(\d+|\s+)\s+(.+)$/);
       if (!m) continue;
+      const stamp = (m[1] ?? '').trim();
       const attr = m[2] ?? '';
       const size = Number.parseInt(m[3] ?? '0', 10);
       const filePath = (m[5] ?? '').trim();
-      out.push({ path: filePath, size, isDir: attr.includes('D') });
+      const modified = parseIsoDateTime(stamp);
+      out.push({
+        path: filePath,
+        size,
+        isDir: attr.includes('D'),
+        ...(modified ? { modified } : {}),
+        ...(stamp ? { modifiedText: stamp } : {}),
+      });
     }
     return out;
   },

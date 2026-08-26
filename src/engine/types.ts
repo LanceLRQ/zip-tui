@@ -69,7 +69,17 @@ export interface BuiltCommand {
 export interface ArchiveEntry {
   path: string;
   size: number;
+  /** Parsed modification time; absent when the tool's format is not readable. */
   modified?: Date | undefined;
+  /**
+   * The timestamp exactly as the tool printed it.
+   *
+   * BSD tar's output is lossy — recent files show a time but no year, older
+   * ones a year but no time — and its month names follow the locale. Such
+   * listings cannot become a reliable `Date`, so the raw text is kept and
+   * shown verbatim rather than guessed at.
+   */
+  modifiedText?: string | undefined;
   isDir: boolean;
 }
 

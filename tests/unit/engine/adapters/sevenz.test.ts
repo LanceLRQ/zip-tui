@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { sevenzAdapter } from '../../../../src/engine/adapters/sevenz';
 
+describe('sevenzAdapter timestamps', () => {
+  it('parses the ISO timestamp 7z prints', () => {
+    const stdout = `------------------- ----- ------------ ------------  ------------
+2026-08-26 14:55:03 D....            0            0  d
+2026-08-26 14:55:03 ....A            9           22  d/new.txt
+------------------- ----- ------------ ------------  ------------
+`;
+    const entries = sevenzAdapter.parseList(stdout);
+    const file = entries.find((e) => e.path === 'd/new.txt');
+    expect(file?.modified?.getFullYear()).toBe(2026);
+    expect(file?.modified?.getMonth()).toBe(7);
+    expect(file?.modified?.getDate()).toBe(26);
+    expect(file?.modified?.getHours()).toBe(14);
+    expect(file?.modified?.getSeconds()).toBe(3);
+    expect(file?.modifiedText).toBe('2026-08-26 14:55:03');
+  });
+});
+
 describe('sevenzAdapter', () => {
   it('builds create with level and password including filename encryption', () => {
     const c = sevenzAdapter.buildCreate({

@@ -100,6 +100,20 @@ Archive:  out.zip
     expect(entries[1]).toMatchObject({ path: 'src/file-3.txt', size: 10, isDir: false });
   });
 
+  it('parses the timestamp into a date', () => {
+    const stdout = `  Length      Date    Time    Name
+---------  ---------- -----   ----
+       10  08-26-2026 10:49   a.txt
+`;
+    const e = zipAdapter.parseList(stdout)[0];
+    expect(e?.modified?.getFullYear()).toBe(2026);
+    expect(e?.modified?.getMonth()).toBe(7);
+    expect(e?.modified?.getDate()).toBe(26);
+    expect(e?.modified?.getHours()).toBe(10);
+    expect(e?.modified?.getMinutes()).toBe(49);
+    expect(e?.modifiedText).toBe('08-26-2026 10:49');
+  });
+
   it('does not mistake the summary footer for an entry', () => {
     const stdout = `  Length      Date    Time    Name
 ---------  ---------- -----   ----

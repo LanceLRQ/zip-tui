@@ -64,4 +64,40 @@ tar: Removing leading '/' from member names
   it('returns nothing for empty output', () => {
     expect(parseTarVerboseListing('')).toEqual([]);
   });
+
+  describe('timestamps', () => {
+    it('parses GNU tar ISO timestamps into a date', () => {
+      const stdout = '-rw-r--r-- lancelrq/wheel    4 2024-01-01 12:00 d/old.txt\n';
+      const e = parseTarVerboseListing(stdout)[0];
+      expect(e?.modified?.getFullYear()).toBe(2024);
+      expect(e?.modified?.getMonth()).toBe(0);
+      expect(e?.modified?.getDate()).toBe(1);
+      expect(e?.modified?.getHours()).toBe(12);
+    });
+
+    // BSD output lacks either the year or the time, and localises month names,
+    // so it is kept verbatim instead of being guessed into a Date
+    it('keeps BSD timestamps as text without inventing a date', () => {
+      const stdout = `-rw-r--r--  0 lancelrq wheel   3 Aug 26 11:02 d/new.txt
+-rw-r--r--  0 lancelrq wheel   4 Jan  1  2024 d/old.txt
+`;
+      const entries = parseTarVerboseListing(stdout);
+      expect(entries[0]?.modified).toBeUndefined();
+      expect(entries[0]?.modifiedText).toBe('Aug 26 11:02');
+      expect(entries[1]?.modified).toBeUndefined();
+      expect(entries[1]?.modifiedText).toBe('Jan  1  2024');
+    });
+
+    it('keeps a localised BSD timestamp verbatim too', () => {
+      const stdout = '-rw-r--r--  0 lancelrq wheel   3  8月 26 11:02 d/new.txt\n';
+      const e = parseTarVerboseListing(stdout)[0];
+      expect(e?.modified).toBeUndefined();
+      expect(e?.modifiedText).toBe('8月 26 11:02');
+    });
+
+    it('records the text alongside the parsed date for GNU output', () => {
+      const stdout = '-rw-r--r-- lancelrq/wheel    4 2024-01-01 12:00 d/old.txt\n';
+      expect(parseTarVerboseListing(stdout)[0]?.modifiedText).toBe('2024-01-01 12:00');
+    });
+  });
 });

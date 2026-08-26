@@ -1,4 +1,5 @@
 import type { ArchiveEntry } from '../types.js';
+import { parseIsoDateTime } from './dateUtils.js';
 
 /**
  * `tar -tvf` has no stable output format across implementations:
@@ -18,7 +19,7 @@ const ENTRY = new RegExp(
     '^([dlbcps-][rwxsStT-]{9})', // mode
     '\\s+.*?', // owner / group / link count — layout varies
     '(\\d+)', // size, always just before the timestamp
-    '\\s+(?:',
+    '\\s+(',
     '\\d{4}-\\d{2}-\\d{2}\\s+\\d{1,2}:\\d{2}', // GNU: ISO date + time
     '|',
     '\\S+\\s+\\d{1,2}\\s+(?:\\d{1,2}:\\d{2}|\\d{4})', // BSD: month day, then time or year
@@ -34,9 +35,18 @@ export function parseTarVerboseListing(stdout: string): ArchiveEntry[] {
     if (!m) continue;
     const mode = m[1] ?? '';
     const size = Number.parseInt(m[2] ?? '0', 10);
-    const filePath = (m[3] ?? '').trim();
+    const stamp = (m[3] ?? '').trim();
+    const filePath = (m[4] ?? '').trim();
     if (filePath === '') continue;
-    out.push({ path: filePath, size, isDir: mode.startsWith('d') });
+    // only GNU's ISO form is unambiguous; BSD's is kept as text
+    const modified = parseIsoDateTime(stamp);
+    out.push({
+      path: filePath,
+      size,
+      isDir: mode.startsWith('d'),
+      ...(modified ? { modified } : {}),
+      ...(stamp ? { modifiedText: stamp } : {}),
+    });
   }
   return out;
 }

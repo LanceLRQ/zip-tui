@@ -1,16 +1,26 @@
 import type { ArchiveEntry, FormatAdapter, Progress } from '../types.js';
+import { parseUsDateTime } from './dateUtils.js';
 
 // Info-ZIP's unzip prints MM-DD-YYYY; accept ISO too since some builds and
 // locales differ. The date is what separates a real entry from the summary
 // footer, which has a size but no timestamp.
-const LIST_LINE = /^\s*(\d+)\s+(?:\d{2}-\d{2}-\d{4}|\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}\s+(.+)$/;
+const LIST_LINE = /^\s*(\d+)\s+(\d{2}-\d{2}-\d{4}|\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(.+)$/;
 
 function parseListLine(line: string): ArchiveEntry | null {
   const m = line.match(LIST_LINE);
   if (!m) return null;
   const size = Number.parseInt(m[1] ?? '0', 10);
-  const filePath = (m[2] ?? '').trim();
-  return { path: filePath, size, isDir: filePath.endsWith('/') };
+  const datePart = m[2] ?? '';
+  const timePart = m[3] ?? '';
+  const filePath = (m[4] ?? '').trim();
+  const modified = parseUsDateTime(datePart, timePart);
+  return {
+    path: filePath,
+    size,
+    isDir: filePath.endsWith('/'),
+    ...(modified ? { modified } : {}),
+    modifiedText: `${datePart} ${timePart}`,
+  };
 }
 
 export const zipAdapter: FormatAdapter = {
