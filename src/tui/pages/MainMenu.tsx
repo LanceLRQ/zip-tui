@@ -1,4 +1,4 @@
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useApp, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import type React from 'react';
 import { type AppRoute, useAppStore } from '../../store/index.js';
@@ -10,6 +10,9 @@ type ItemValue = AppRoute | 'quit';
 export const MainMenu: React.FC = () => {
   const t = useT();
   const setRoute = useAppStore((s) => s.setRoute);
+  // must go through Ink rather than process.exit, otherwise teardown is skipped
+  // and the terminal is left sitting in the alternate screen buffer
+  const { exit } = useApp();
 
   const items: { label: string; value: ItemValue }[] = [
     { label: t('menu.create'), value: 'createWizard' },
@@ -21,12 +24,15 @@ export const MainMenu: React.FC = () => {
   ];
 
   const onSelect = (item: { value: ItemValue }) => {
-    if (item.value === 'quit') process.exit(0);
+    if (item.value === 'quit') {
+      exit();
+      return;
+    }
     setRoute(item.value);
   };
 
   useInput((_input, key) => {
-    if (key.escape) process.exit(0);
+    if (key.escape) exit();
   });
 
   return (
