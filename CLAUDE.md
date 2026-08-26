@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository is currently pre-implementation: source code, `package.json`, and build configuration have not been written yet and will appear progressively as work proceeds.
+The MVP is implemented. All of Phase 0–11 in `plans/tasks.md` has landed, and the local gate (`bun run lint && bun run typecheck && bun run test:coverage`) is green.
+
+- **Formats shipped**: zip, 7z, tar, tar.gz, tar.bz2, tar.xz, tar.zst, gz, bz2 — nine adapters under `src/engine/adapters/`, beyond the three the MVP originally scoped
+- **CLI subcommands routed**: `a` / `x` / `l` / `deps` / `config`. `t` and `update` are declared in the design but not yet wired into `src/index.ts` — they remain V1 scope
+- **Not yet released**: the repo has no git tag, so the 4-platform release matrix in `.github/workflows/release.yml` has never actually run. Only the host-platform binary is verified, via `tests/e2e/binary-smoke.test.ts`
+
+Recent work is concentrated in the TUI layer — `src/tui/components/FilePicker.tsx` (a four-mode reusable dialog) has taken most of the last dozen commits.
 
 ## What this project is
 
@@ -28,8 +34,6 @@ Open-source distribution: GitHub Releases via Actions matrix (`macos-14` / `maco
 
 ## Common commands
 
-These scripts land once `package.json` is created:
-
 ```bash
 bun run dev           # run the TUI from source
 bun run build         # bun build --compile → dist/zt single binary
@@ -47,7 +51,7 @@ Run a single test file:
 bun run test tests/unit/engine/adapters/zip.test.ts
 ```
 
-Manual smoke (once the CLI entry exists):
+Manual smoke:
 
 ```bash
 ZT_NO_TUI=1 bun run src/index.ts a out.zip src/ --dry-run
