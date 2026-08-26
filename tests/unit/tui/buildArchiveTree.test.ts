@@ -98,6 +98,48 @@ describe('buildArchiveTree', () => {
     expect(buildArchiveTree([])).toEqual([]);
   });
 
+  describe('sorting', () => {
+    const MIXED = [
+      file('small.txt', 10),
+      file('huge.txt', 9000),
+      file('adir/inner.txt', 500),
+      file('zdir/inner.txt', 3000),
+    ];
+
+    it('defaults to directories first, then alphabetical', () => {
+      expect(buildArchiveTree(MIXED).map((n) => n.name)).toEqual([
+        'adir',
+        'zdir',
+        'huge.txt',
+        'small.txt',
+      ]);
+    });
+
+    // sorting by size is for finding what is big; grouping directories first
+    // would hide the largest entries behind them
+    it('sorts purely by descending size when asked, without grouping', () => {
+      expect(buildArchiveTree(MIXED, 'size').map((n) => n.name)).toEqual([
+        'huge.txt',
+        'zdir',
+        'adir',
+        'small.txt',
+      ]);
+    });
+
+    it('sorts nested levels by size too', () => {
+      const tree = buildArchiveTree(
+        [file('p/a.txt', 1), file('p/b.txt', 999), file('p/c.txt', 50)],
+        'size',
+      );
+      expect(tree[0]?.children.map((c) => c.name)).toEqual(['b.txt', 'c.txt', 'a.txt']);
+    });
+
+    it('falls back to name for entries of equal size, keeping order stable', () => {
+      const tree = buildArchiveTree([file('b.txt', 5), file('a.txt', 5), file('c.txt', 5)], 'size');
+      expect(tree.map((n) => n.name)).toEqual(['a.txt', 'b.txt', 'c.txt']);
+    });
+  });
+
   it('keeps an empty directory visible with zero size', () => {
     const tree = buildArchiveTree([dir('empty/')]);
     expect(shape(tree)).toBe('empty(0)');

@@ -22,7 +22,10 @@ export function formatSize(bytes: number): string {
  * Flat listing: one node per archive entry, showing the full stored path.
  * Archive order is preserved — it reflects how the tool laid the entries out.
  */
-export function entriesToFlatNodes(entries: ArchiveEntry[]): TreeNode[] {
+export function entriesToFlatNodes(
+  entries: ArchiveEntry[],
+  sortBy: SortBy = 'default',
+): TreeNode[] {
   const out: TreeNode[] = [];
   const seen = new Set<string>();
   for (const e of entries) {
@@ -38,6 +41,9 @@ export function entriesToFlatNodes(entries: ArchiveEntry[]): TreeNode[] {
       // a directory's own byte count is always 0 and says nothing useful
       sizeLabel: e.isDir ? '-' : formatSize(e.size),
     });
+  }
+  if (sortBy === 'size') {
+    out.sort((a, b) => (a.size !== b.size ? b.size - a.size : a.label.localeCompare(b.label)));
   }
   return out;
 }
@@ -77,13 +83,26 @@ function segmentsOf(rawPath: string): string[] {
     .filter((s) => s !== '' && s !== '.');
 }
 
-/** Directories first, then files; alphabetical within each group. */
-function sortTree(nodes: MutableNode[]): void {
+/**
+ * How to order entries.
+ *
+ * `default` groups directories first and sorts each group by name — the
+ * familiar file-manager layout. `size` abandons the grouping entirely: the
+ * point of sorting by size is to surface the biggest things, and pinning
+ * directories to the top would bury them.
+ */
+export type SortBy = 'default' | 'size';
+
+function sortTree(nodes: MutableNode[], by: SortBy): void {
   nodes.sort((a, b) => {
+    if (by === 'size') {
+      if (a.size !== b.size) return b.size - a.size;
+      return a.name.localeCompare(b.name);
+    }
     if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
-  for (const n of nodes) sortTree(n.children);
+  for (const n of nodes) sortTree(n.children, by);
 }
 
 /** Rolls file sizes up into every ancestor directory, returning the subtotal. */
@@ -117,7 +136,10 @@ function strip(node: MutableNode): ArchiveTreeNode {
  * archive is not obliged to contain entries for them — `zip -D` omits them
  * entirely, and relying on them would silently drop whole branches.
  */
-export function buildArchiveTree(entries: ArchiveEntry[]): ArchiveTreeNode[] {
+export function buildArchiveTree(
+  entries: ArchiveEntry[],
+  sortBy: SortBy = 'default',
+): ArchiveTreeNode[] {
   const roots: MutableNode[] = [];
   const rootIndex = new Map<string, MutableNode>();
 
@@ -148,8 +170,9 @@ export function buildArchiveTree(entries: ArchiveEntry[]): ArchiveTreeNode[] {
     });
   }
 
+  // sizes must roll up before sorting, or directories would all compare as 0
   accumulateSizes(roots);
-  sortTree(roots);
+  sortTree(roots, sortBy);
   return roots.map(strip);
 }
 
@@ -192,6 +215,19 @@ export function flattenTree(
 export function initialExpanded(tree: readonly ArchiveTreeNode[]): Set<string> {
   const only = tree.length === 1 ? tree[0] : undefined;
   return only?.isDir ? new Set([only.path]) : new Set();
+}
+
+/** Every directory path in the tree — the expanded set for "open everything". */
+export function allDirPaths(tree: readonly ArchiveTreeNode[]): Set<string> {
+  const out = new Set<string>();
+  const walk = (branch: readonly ArchiveTreeNode[]): void => {
+    for (const n of branch) {
+      if (n.isDir) out.add(n.path);
+      walk(n.children);
+    }
+  };
+  walk(tree);
+  return out;
 }
 
 /** Enclosing directory of an archive path, or null for a top-level entry. */

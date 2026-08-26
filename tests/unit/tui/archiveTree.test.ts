@@ -63,6 +63,19 @@ describe('entriesToFlatNodes', () => {
     expect(entriesToFlatNodes([])).toEqual([]);
   });
 
+  it('sorts by descending size when asked', () => {
+    const nodes = entriesToFlatNodes(
+      [entry('small.txt', 10), entry('huge.txt', 9000), entry('mid.txt', 500)],
+      'size',
+    );
+    expect(nodes.map((n) => n.label)).toEqual(['huge.txt', 'mid.txt', 'small.txt']);
+  });
+
+  it('keeps the archive order under the default sort', () => {
+    const nodes = entriesToFlatNodes([entry('z.txt', 1), entry('a.txt', 9000)], 'default');
+    expect(nodes.map((n) => n.label)).toEqual(['z.txt', 'a.txt']);
+  });
+
   it('attaches a formatted size label to files', () => {
     const nodes = entriesToFlatNodes([entry('a.txt', 2048)]);
     expect(nodes[0]?.sizeLabel).toBe('2.0 K');

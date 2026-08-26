@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ArchiveEntry } from '../../../src/engine/types';
 import {
+  allDirPaths,
   buildArchiveTree,
   flattenTree,
   initialExpanded,
@@ -95,6 +96,33 @@ describe('initialExpanded', () => {
 
   it('handles an empty tree', () => {
     expect(initialExpanded([])).toEqual(new Set());
+  });
+});
+
+describe('allDirPaths', () => {
+  it('collects every directory at every depth', () => {
+    expect(allDirPaths(SAMPLE)).toEqual(new Set(['proj', 'proj/src', 'proj/src/deep']));
+  });
+
+  it('ignores files', () => {
+    expect(allDirPaths(buildArchiveTree([file('a.txt'), file('b.txt')]))).toEqual(new Set());
+  });
+
+  it('handles an empty tree', () => {
+    expect(allDirPaths([])).toEqual(new Set());
+  });
+
+  it('expands the whole tree when used as the expanded set', () => {
+    const rows = flattenTree(SAMPLE, allDirPaths(SAMPLE));
+    expect(rows.map((n) => n.label)).toEqual([
+      'proj',
+      'src',
+      'deep',
+      'util.ts',
+      'index.ts',
+      'readme.md',
+      'top.txt',
+    ]);
   });
 });
 

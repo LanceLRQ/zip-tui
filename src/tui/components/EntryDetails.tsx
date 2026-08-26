@@ -14,6 +14,8 @@ export interface EntryDetailsProps {
   childCount?: number | undefined;
   /** Localised "{{count}} items" label; omitted when childCount is absent. */
   childCountLabel?: string | undefined;
+  /** Symlink target, when the tool reported one. */
+  linkTarget?: string | undefined;
   emptyLabel: string;
 }
 
@@ -31,6 +33,7 @@ export const EntryDetails: React.FC<EntryDetailsProps> = ({
   modifiedText,
   childCount,
   childCountLabel,
+  linkTarget,
   emptyLabel,
 }) => {
   if (path === '') {
@@ -49,8 +52,9 @@ export const EntryDetails: React.FC<EntryDetailsProps> = ({
 
   return (
     <Box flexDirection="column">
-      <Text color="cyan" wrap="truncate-start">
-        {path}
+      <Text wrap="truncate-start">
+        <Text color="cyan">{path}</Text>
+        {linkTarget ? <Text dimColor>{` → ${linkTarget}`}</Text> : null}
       </Text>
       <Text dimColor wrap="truncate">
         {parts.join(' · ')}

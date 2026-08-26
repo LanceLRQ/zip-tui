@@ -7,6 +7,7 @@ import { MVP_ARCHIVE_EXTENSIONS } from '../../engine/types.js';
 import { useAppStore } from '../../store/index.js';
 import {
   type ArchiveListing,
+  allDirPaths,
   buildArchiveTree,
   collapseParent,
   entriesToFlatNodes,
@@ -14,6 +15,7 @@ import {
   initialExpanded,
   loadArchiveListing,
   parentPathOf,
+  type SortBy,
 } from '../components/archiveTree.js';
 import { Divider } from '../components/Divider.js';
 import { EntryDetails } from '../components/EntryDetails.js';
@@ -40,13 +42,14 @@ export const ViewPage: React.FC = () => {
   const [cursor, setCursor] = useState(0);
   const [mode, setMode] = useState<ViewMode>('tree');
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [sortBy, setSortBy] = useState<SortBy>('default');
   const rows = useTerminalRows();
 
   const entries = listing?.entries ?? [];
-  const tree = useMemo(() => buildArchiveTree(entries), [entries]);
+  const tree = useMemo(() => buildArchiveTree(entries, sortBy), [entries, sortBy]);
   const nodes = useMemo(
-    () => (mode === 'tree' ? flattenTree(tree, expanded) : entriesToFlatNodes(entries)),
-    [mode, tree, expanded, entries],
+    () => (mode === 'tree' ? flattenTree(tree, expanded) : entriesToFlatNodes(entries, sortBy)),
+    [mode, tree, expanded, entries, sortBy],
   );
   const total = nodes.length;
   const pageSize = fitPageSize(rows, CHROME_ROWS);
@@ -105,6 +108,26 @@ export const ViewPage: React.FC = () => {
         setMode((m) => (m === 'tree' ? 'flat' : 'tree'));
         setCursor(0);
         return;
+      }
+
+      if (input === 's') {
+        // the tree is rebuilt in a different order, so old row numbers are
+        // meaningless — start from the top
+        setSortBy((s) => (s === 'default' ? 'size' : 'default'));
+        setCursor(0);
+        return;
+      }
+
+      if (mode === 'tree') {
+        if (input === 'E') {
+          setExpanded(allDirPaths(tree));
+          return;
+        }
+        if (input === 'C') {
+          setExpanded(new Set());
+          setCursor(0);
+          return;
+        }
       }
 
       const node = nodes[safeCursor];
@@ -213,6 +236,7 @@ export const ViewPage: React.FC = () => {
           modified={focusedEntry?.modified}
           modifiedText={focusedEntry?.modifiedText}
           childCount={focusedChildren}
+          linkTarget={focusedEntry?.linkTarget}
           childCountLabel={
             focusedChildren === undefined
               ? undefined
