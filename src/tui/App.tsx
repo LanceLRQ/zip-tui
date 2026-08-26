@@ -3,6 +3,7 @@ import type React from 'react';
 import { useEffect } from 'react';
 import { detectAll } from '../deps/detect.js';
 import { useAppStore } from '../store/index.js';
+import { useTerminalRows } from './hooks/useTerminalRows.js';
 import { CreateWizard } from './pages/CreateWizard.js';
 import { DependenciesPage } from './pages/DependenciesPage.js';
 import { ExtractWizard } from './pages/ExtractWizard.js';
@@ -13,13 +14,15 @@ import { ViewPage } from './pages/ViewPage.js';
 export const App: React.FC = () => {
   const route = useAppStore((s) => s.route);
   const setDepsStatus = useAppStore((s) => s.deps.setStatus);
+  // re-renders on terminal resize, so the app keeps filling the window
+  const rows = useTerminalRows();
 
   useEffect(() => {
     void detectAll().then(setDepsStatus);
   }, [setDepsStatus]);
 
   return (
-    <Box flexDirection="column" padding={1}>
+    <Box flexDirection="column" padding={1} {...(rows > 0 ? { height: rows } : {})}>
       {route === 'menu' && <MainMenu />}
       {route === 'createWizard' && <CreateWizard />}
       {route === 'extractWizard' && <ExtractWizard />}

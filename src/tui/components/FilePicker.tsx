@@ -6,6 +6,8 @@ import TextInput from 'ink-text-input';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useT } from '../hooks/useI18n.js';
+import { useTerminalRows } from '../hooks/useTerminalRows.js';
+import { fitPageSize } from './fitPageSize.js';
 import { type SelectedItem, SelectedList } from './SelectedList.js';
 import { listDirectoryAsNodes } from './useDirectoryTree.js';
 import { type TreeNode, VirtualTree } from './VirtualTree.js';
@@ -32,7 +34,24 @@ export type FilePickerProps =
     });
 
 const PARENT_ID = '__parent__';
-const PAGE_SIZE = 15;
+
+/**
+ * Rows each mode spends on things that are not list entries, so the list can
+ * claim whatever is left of the terminal.
+ *
+ * Common to every mode: the app's padding (2), the caller's own heading (1),
+ * this dialog's rounded border (2), the title row (1), the cwd row (1), a row
+ * held back for an error message (1), and the hint line (1) — nine in total.
+ * On top of that the single-pane modes add the list's top and bottom rules (2)
+ * plus the item count (1); saveFile adds its filename row; and multiSelect's
+ * boxed panes add a border (2), a pane title (1) and the item count (1).
+ */
+const CHROME_ROWS: Record<PickerMode, number> = {
+  openFile: 12,
+  openDir: 12,
+  saveFile: 13,
+  multiSelect: 13,
+};
 
 const TITLE_KEYS: Record<PickerMode, string> = {
   openFile: 'picker.openFile',
@@ -61,6 +80,8 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
     onCancel,
   } = props;
   const t = useT();
+  const rows = useTerminalRows();
+  const pageSize = fitPageSize(rows, CHROME_ROWS[mode]);
   const [cwd, setCwd] = useState(
     preselectPath ? path.dirname(preselectPath) : (initialPath ?? process.cwd()),
   );
@@ -384,11 +405,11 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
             <Text bold>{t('picker.browseTitle')}</Text>
             <VirtualTree
               nodes={items}
-              pageSize={PAGE_SIZE}
+              pageSize={pageSize}
               selectedIndex={cursor}
               countLabel={t('picker.itemCount', {
                 total: items.length,
-                shown: Math.min(PAGE_SIZE, items.length),
+                shown: Math.min(pageSize, items.length),
               })}
               selectedIds={selected}
               parentId={PARENT_ID}
@@ -408,7 +429,7 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
               <SelectedList
                 items={selectedItems}
                 cursor={selectedCursor}
-                pageSize={PAGE_SIZE}
+                pageSize={pageSize}
                 focused={paneFocus === 'selected'}
               />
             )}
@@ -424,11 +445,11 @@ export const FilePicker: React.FC<FilePickerProps> = (props) => {
         >
           <VirtualTree
             nodes={items}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             selectedIndex={cursor}
             countLabel={t('picker.itemCount', {
               total: items.length,
-              shown: Math.min(PAGE_SIZE, items.length),
+              shown: Math.min(pageSize, items.length),
             })}
             parentId={PARENT_ID}
           />

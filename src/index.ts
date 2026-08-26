@@ -15,9 +15,11 @@ import {
 
 async function launchTui(_args: ParsedArgs): Promise<number> {
   const { App } = await import('./tui/App.js');
-  const { clearScreen } = await import('./tui/clearScreen.js');
-  clearScreen();
-  render(React.createElement(App));
+  // the alternate screen gives the app the full window and restores whatever
+  // the terminal was showing once it exits, the way vim and htop do
+  const instance = render(React.createElement(App), { alternateScreen: true });
+  // waiting lets Ink tear down and leave the alternate screen before we return
+  await instance.waitUntilExit();
   return 0;
 }
 

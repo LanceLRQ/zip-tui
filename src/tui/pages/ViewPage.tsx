@@ -7,11 +7,16 @@ import { MVP_ARCHIVE_EXTENSIONS } from '../../engine/types.js';
 import { useAppStore } from '../../store/index.js';
 import { type ArchiveListing, loadArchiveListing } from '../components/archiveTree.js';
 import { FilePicker } from '../components/FilePicker.js';
+import { fitPageSize } from '../components/fitPageSize.js';
 import { moveCursor, type ScrollAction } from '../components/scrollCursor.js';
 import { VirtualTree } from '../components/VirtualTree.js';
 import { useT } from '../hooks/useI18n.js';
+import { useTerminalRows } from '../hooks/useTerminalRows.js';
 
-const PAGE_SIZE = 15;
+// rows this page spends on things that are not list entries: the app's padding
+// (2), the archive path (1), the gap above the list (1), the item count (1),
+// and the gap plus hint line at the bottom (2)
+const CHROME_ROWS = 7;
 
 export const ViewPage: React.FC = () => {
   const t = useT();
@@ -19,9 +24,11 @@ export const ViewPage: React.FC = () => {
   const [archive, setArchive] = useState('');
   const [listing, setListing] = useState<ArchiveListing | null>(null);
   const [cursor, setCursor] = useState(0);
+  const rows = useTerminalRows();
 
   const nodes = listing?.nodes ?? [];
   const total = nodes.length;
+  const pageSize = fitPageSize(rows, CHROME_ROWS);
 
   useInput(
     (input, key) => {
@@ -36,7 +43,7 @@ export const ViewPage: React.FC = () => {
       else if (key.pageDown) action = 'pageDown';
       else if (input === 'g') action = 'home';
       else if (input === 'G') action = 'end';
-      if (action) setCursor((c) => moveCursor(c, total, action, PAGE_SIZE));
+      if (action) setCursor((c) => moveCursor(c, total, action, pageSize));
     },
     { isActive: archive !== '' },
   );
@@ -77,13 +84,13 @@ export const ViewPage: React.FC = () => {
         ) : (
           <VirtualTree
             nodes={nodes}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             selectedIndex={cursor}
             showSize
             showDirMarker={false}
             countLabel={t('view.itemCount', {
               total,
-              shown: Math.min(PAGE_SIZE, total),
+              shown: Math.min(pageSize, total),
             })}
           />
         )}
