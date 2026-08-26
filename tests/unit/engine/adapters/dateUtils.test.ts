@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   displayTimestamp,
   formatDateTime,
+  parseBsdDateTime,
   parseIsoDateTime,
   parseUsDateTime,
 } from '../../../../src/engine/adapters/dateUtils';
@@ -78,6 +79,92 @@ describe('formatDateTime', () => {
 
   it('pads single-digit parts', () => {
     expect(formatDateTime(new Date(2026, 0, 1, 9, 5))).toBe('2026-01-01 09:05');
+  });
+});
+
+describe('parseBsdDateTime', () => {
+  // BSD tar shows a clock for files under ~6 months old and a year for older
+  // ones, so a clock implies the date is within the last few months
+  const NOW = new Date(2026, 7, 26, 15, 30); // 2026-08-26 15:30
+
+  it('reads an English month with a clock, inferring the current year', () => {
+    const d = parseBsdDateTime('Aug 26 15:03', NOW);
+    expect(d?.getFullYear()).toBe(2026);
+    expect(d?.getMonth()).toBe(7);
+    expect(d?.getDate()).toBe(26);
+    expect(d?.getHours()).toBe(15);
+    expect(d?.getMinutes()).toBe(3);
+  });
+
+  it('reads a CJK numeric month with a clock', () => {
+    const d = parseBsdDateTime('8月 26 15:03', NOW);
+    expect(d?.getFullYear()).toBe(2026);
+    expect(d?.getMonth()).toBe(7);
+    expect(d?.getDate()).toBe(26);
+  });
+
+  // a clock-form date that would land in the future must belong to last year
+  it('rolls back a year when the inferred date would be in the future', () => {
+    const d = parseBsdDateTime('Dec 25 09:00', NOW);
+    expect(d?.getFullYear()).toBe(2025);
+    expect(d?.getMonth()).toBe(11);
+  });
+
+  it('does not roll back for a date earlier today', () => {
+    const d = parseBsdDateTime('Aug 26 09:00', NOW);
+    expect(d?.getFullYear()).toBe(2026);
+  });
+
+  it('reads the year form, with no time of day available', () => {
+    const d = parseBsdDateTime('Jan  1  2024', NOW);
+    expect(d?.getFullYear()).toBe(2024);
+    expect(d?.getMonth()).toBe(0);
+    expect(d?.getDate()).toBe(1);
+    expect(d?.getHours()).toBe(0);
+    expect(d?.getMinutes()).toBe(0);
+  });
+
+  it('reads a CJK month in the year form', () => {
+    const d = parseBsdDateTime('1月  1  2024', NOW);
+    expect(d?.getFullYear()).toBe(2024);
+    expect(d?.getMonth()).toBe(0);
+  });
+
+  it('accepts every English month abbreviation', () => {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    months.forEach((mon, idx) => {
+      expect(parseBsdDateTime(`${mon} 15  2020`, NOW)?.getMonth(), mon).toBe(idx);
+    });
+  });
+
+  // an unrecognised locale must not become a wrong date
+  it('gives up on month names it does not know', () => {
+    expect(parseBsdDateTime('août 26 15:03', NOW)).toBeUndefined();
+    expect(parseBsdDateTime('Ago 26 15:03', NOW)).toBeUndefined();
+  });
+
+  it('rejects malformed input', () => {
+    expect(parseBsdDateTime('', NOW)).toBeUndefined();
+    expect(parseBsdDateTime('2026-08-26 15:03', NOW)).toBeUndefined();
+    expect(parseBsdDateTime('Aug 26', NOW)).toBeUndefined();
+  });
+
+  it('rejects an impossible day', () => {
+    expect(parseBsdDateTime('Feb 30 10:00', NOW)).toBeUndefined();
+    expect(parseBsdDateTime('Jan 32  2024', NOW)).toBeUndefined();
   });
 });
 

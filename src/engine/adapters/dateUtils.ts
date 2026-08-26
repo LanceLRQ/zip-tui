@@ -65,6 +65,61 @@ export function parseUsDateTime(datePart: string, timePart: string): Date | unde
   return makeLocalDate(year, month, day, Number(time[1]), Number(time[2]), Number(time[3] ?? 0));
 }
 
+const EN_MONTHS = [
+  'jan',
+  'feb',
+  'mar',
+  'apr',
+  'may',
+  'jun',
+  'jul',
+  'aug',
+  'sep',
+  'oct',
+  'nov',
+  'dec',
+];
+
+/** Month number from "Aug" or from the CJK "8月" form; 0 when unrecognised. */
+function monthFrom(token: string): number {
+  const cjk = token.match(/^(\d{1,2})月$/);
+  if (cjk) return Number(cjk[1]);
+  const idx = EN_MONTHS.indexOf(token.toLowerCase().slice(0, 3));
+  // only accept an exact abbreviation, so "Ago" or "août" are not coerced
+  return idx >= 0 && token.length <= 3 ? idx + 1 : 0;
+}
+
+const BSD = /^(\S+)\s+(\d{1,2})\s+(?:(\d{1,2}):(\d{2})|(\d{4}))$/;
+
+/**
+ * Reads BSD tar's "Aug 26 15:03" and "Jan  1  2024" forms.
+ *
+ * The output is lossy: it carries a clock or a year, never both. BSD switches
+ * to the year form once a file is roughly six months old, so a clock means the
+ * date falls within the last few months — the year is taken as the most recent
+ * one that does not put the date in the future. The year form has no time of
+ * day, so midnight is used.
+ *
+ * Month names follow the locale. English abbreviations and the CJK "N月" form
+ * are understood; anything else yields undefined rather than a wrong date.
+ */
+export function parseBsdDateTime(text: string, now: Date = new Date()): Date | undefined {
+  const m = text.trim().replace(/\s+/g, ' ').match(BSD);
+  if (!m) return undefined;
+
+  const month = monthFrom(m[1] ?? '');
+  if (month === 0) return undefined;
+  const day = Number(m[2]);
+
+  if (m[5]) return makeLocalDate(Number(m[5]), month, day, 0, 0, 0);
+
+  const candidate = makeLocalDate(now.getFullYear(), month, day, Number(m[3]), Number(m[4]), 0);
+  if (!candidate) return undefined;
+  if (candidate.getTime() <= now.getTime()) return candidate;
+  // a future timestamp means the clock form refers to last year
+  return makeLocalDate(now.getFullYear() - 1, month, day, Number(m[3]), Number(m[4]), 0);
+}
+
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** Renders a timestamp as "2026-08-26 14:55" — sortable and unambiguous. */

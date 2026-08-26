@@ -80,6 +80,13 @@ export interface ArchiveEntry {
    * shown verbatim rather than guessed at.
    */
   modifiedText?: string | undefined;
+  /**
+   * Where a symbolic link points, when the tool reports it.
+   *
+   * Only tar exposes this; zip and 7z list links as ordinary files with no
+   * target.
+   */
+  linkTarget?: string | undefined;
   isDir: boolean;
 }
 

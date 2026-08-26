@@ -1,5 +1,5 @@
 import type { ArchiveEntry } from '../types.js';
-import { parseIsoDateTime } from './dateUtils.js';
+import { parseBsdDateTime, parseIsoDateTime } from './dateUtils.js';
 
 /**
  * `tar -tvf` has no stable output format across implementations:
@@ -36,16 +36,29 @@ export function parseTarVerboseListing(stdout: string): ArchiveEntry[] {
     const mode = m[1] ?? '';
     const size = Number.parseInt(m[2] ?? '0', 10);
     const stamp = (m[3] ?? '').trim();
-    const filePath = (m[4] ?? '').trim();
+    let filePath = (m[4] ?? '').trim();
     if (filePath === '') continue;
-    // only GNU's ISO form is unambiguous; BSD's is kept as text
-    const modified = parseIsoDateTime(stamp);
+
+    // symlink rows read "name -> target"; only split them, so an arrow inside
+    // an ordinary file name survives untouched
+    let linkTarget: string | undefined;
+    if (mode.startsWith('l')) {
+      const arrow = filePath.indexOf(' -> ');
+      if (arrow > 0) {
+        linkTarget = filePath.slice(arrow + 4).trim();
+        filePath = filePath.slice(0, arrow).trim();
+      }
+    }
+    // GNU's ISO form is exact; BSD's is lossy but still recoverable for the
+    // locales we know, and falls back to raw text otherwise
+    const modified = parseIsoDateTime(stamp) ?? parseBsdDateTime(stamp);
     out.push({
       path: filePath,
       size,
       isDir: mode.startsWith('d'),
       ...(modified ? { modified } : {}),
       ...(stamp ? { modifiedText: stamp } : {}),
+      ...(linkTarget ? { linkTarget } : {}),
     });
   }
   return out;
