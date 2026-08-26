@@ -21,8 +21,10 @@
     "empty": "Archive is empty",
     "failed": "Failed to read",
     "itemCount": "{{total}} items, showing {{shown}}",
-    "hintTree": "↑↓ move · →/Enter open · ← close · - close parent · PgUp/PgDn page · g/G ends · t list · Esc back",
-    "hintFlat": "↑↓ move · PgUp/PgDn page · g/G first/last · t tree · Esc back"
+    "hintTree": "↑↓ move · → open · Enter toggle · ← close · - close parent · PgUp/PgDn page · g/G ends · t list · Esc back",
+    "hintFlat": "↑↓ move · PgUp/PgDn page · g/G first/last · t tree · Esc back",
+    "detailEmpty": "No entry selected",
+    "detailChildren": "{{count}} items"
   },
   "picker": {
     "openFile": "Open file",

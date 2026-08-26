@@ -15,6 +15,7 @@ import {
   loadArchiveListing,
   parentPathOf,
 } from '../components/archiveTree.js';
+import { EntryDetails } from '../components/EntryDetails.js';
 import { FilePicker } from '../components/FilePicker.js';
 import { fitPageSize } from '../components/fitPageSize.js';
 import { moveCursor, type ScrollAction } from '../components/scrollCursor.js';
@@ -24,8 +25,8 @@ import { useTerminalRows } from '../hooks/useTerminalRows.js';
 
 // rows this page spends on things that are not list entries: the app's padding
 // (2), the archive path (1), the gap above the list (1), the item count (1),
-// and the gap plus hint line at the bottom (2)
-const CHROME_ROWS = 7;
+// the gap plus the two-line detail bar (3), and the hint line (1)
+const CHROME_ROWS = 9;
 
 type ViewMode = 'tree' | 'flat';
 
@@ -49,6 +50,32 @@ export const ViewPage: React.FC = () => {
   const pageSize = fitPageSize(rows, CHROME_ROWS);
   // the list shrinks when a directory closes, so never point past its end
   const safeCursor = Math.min(cursor, Math.max(0, total - 1));
+
+  // timestamps live on the original entries, not on the rendered rows
+  const entryByPath = useMemo(() => {
+    const map = new Map<string, (typeof entries)[number]>();
+    for (const e of entries) {
+      // zip reports directories with a trailing slash; the tree drops it
+      map.set(e.path.replace(/\/+$/, ''), e);
+    }
+    return map;
+  }, [entries]);
+
+  const childCountByPath = useMemo(() => {
+    const map = new Map<string, number>();
+    const walk = (branch: readonly { path: string; children: readonly unknown[] }[]): void => {
+      for (const n of branch) {
+        map.set(n.path, n.children.length);
+        walk(n.children as typeof branch);
+      }
+    };
+    walk(tree);
+    return map;
+  }, [tree]);
+
+  const focused = nodes[safeCursor];
+  const focusedEntry = focused ? entryByPath.get(focused.id) : undefined;
+  const focusedChildren = focused?.isDir ? childCountByPath.get(focused.id) : undefined;
 
   const setOpen = (path: string, open: boolean): void => {
     setExpanded((prev) => {
@@ -176,11 +203,25 @@ export const ViewPage: React.FC = () => {
         )}
       </Box>
       <Box marginTop={1}>
-        {/* truncate rather than wrap: the chrome budget assumes a single line */}
-        <Text dimColor wrap="truncate">
-          {t(mode === 'tree' ? 'view.hintTree' : 'view.hintFlat')}
-        </Text>
+        <EntryDetails
+          path={focused?.id ?? ''}
+          isDir={focused?.isDir ?? false}
+          size={focused?.size ?? 0}
+          modified={focusedEntry?.modified}
+          modifiedText={focusedEntry?.modifiedText}
+          childCount={focusedChildren}
+          childCountLabel={
+            focusedChildren === undefined
+              ? undefined
+              : t('view.detailChildren', { count: focusedChildren })
+          }
+          emptyLabel={t('view.detailEmpty')}
+        />
       </Box>
+      {/* truncate rather than wrap: the chrome budget assumes a single line */}
+      <Text dimColor wrap="truncate">
+        {t(mode === 'tree' ? 'view.hintTree' : 'view.hintFlat')}
+      </Text>
     </Box>
   );
 };
