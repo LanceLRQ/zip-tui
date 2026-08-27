@@ -16,7 +16,7 @@ export interface TreeNode {
 }
 
 export interface VirtualTreeProps {
-  nodes: TreeNode[];
+  nodes: readonly TreeNode[];
   pageSize: number;
   selectedIndex: number;
   selectedIds?: Set<string>;
