@@ -64,6 +64,18 @@ describe('availableActions on the filesystem', () => {
     ).toEqual(['enter']);
   });
 
+  // a directory named "stuff.zip" is still a directory, so the real producer
+  // never sets both flags — but the precedence must not be silently reorderable
+  it('treats an entry flagged both ways as an archive', () => {
+    expect(
+      ids({
+        location: fsLocation('/w'),
+        cursor: { id: '/w/stuff.zip', isDir: true, isArchive: true },
+        selectionCount: 0,
+      }),
+    ).toEqual(['enter', 'extract', 'test']);
+  });
+
   it('offers nothing on a plain file', () => {
     expect(
       ids({

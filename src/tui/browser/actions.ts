@@ -12,7 +12,17 @@ export interface Action {
   labelCount?: number;
 }
 
-/** The row under the cursor, reduced to what the decision actually needs. */
+/**
+ * The row under the cursor, reduced to what the decision actually needs.
+ *
+ * `isDir` and `isArchive` are never both true in practice — the producer sets
+ * `isArchive` only for non-directories — but if they were, archive wins.
+ *
+ * There is deliberately no way to express "this is the parent (`..`) row". A
+ * caller sitting on that row should pass `null`, because the row's real action
+ * is stepping out, not descending, and offering "enter" for it would mislabel
+ * the hint line.
+ */
 export interface CursorInfo {
   id: string;
   isDir: boolean;
@@ -39,9 +49,17 @@ export interface ActionContext {
  * takes the marked rows when there are any and the whole thing when there are
  * not. Keeping it under one key keeps the keymap small, and the label states
  * which it will do.
+ *
+ * The order of the returned array is the order the hint line renders, so it is
+ * part of the interface rather than an implementation detail.
+ *
+ * Only contextual actions appear here. Global keys — marking, the marked list,
+ * view and sort toggles, help, quit — are always available and are handled by
+ * the page directly, so listing them would be noise.
  */
 export function availableActions(ctx: ActionContext): Action[] {
-  switch (ctx.location.kind) {
+  const kind = ctx.location.kind;
+  switch (kind) {
     case 'fs':
       return filesystemActions(ctx);
     case 'archive':
@@ -49,7 +67,7 @@ export function availableActions(ctx: ActionContext): Action[] {
     default:
       // a new Location kind needs its own action set decided deliberately,
       // not inherited from whichever branch happened to be last
-      return assertNeverKind(ctx.location);
+      return assertNeverKind(kind);
   }
 }
 
