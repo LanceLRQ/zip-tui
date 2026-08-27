@@ -55,6 +55,7 @@
     "detailEmpty": "未选中条目",
     "detailChildren": "{{count}} 项",
     "selectionTitle": "已选 {{count}} 项 · 共 {{size}}",
+    "selectionTitleDirs": "已选 {{count}} 项 · 含 {{dirs}} 个目录，体积未计",
     "selectionEmpty": "用 Space 标记要压缩的内容",
     "parentHint": "← 上一级",
     "hintFs": "Space 标记 · m 已选 · s 排序 · h 隐藏 · ? 帮助 · q 退出",

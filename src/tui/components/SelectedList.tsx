@@ -7,7 +7,7 @@ export interface SelectedItem {
 }
 
 export interface SelectedListProps {
-  items: SelectedItem[];
+  items: readonly SelectedItem[];
   cursor: number;
   pageSize: number;
   focused: boolean;
@@ -15,7 +15,18 @@ export interface SelectedListProps {
 
 const TAG_DIR = '[D] ';
 const TAG_FILE = '[F] ';
+// mirrors VirtualTree: colour alone would vanish under NO_COLOR or a pipe
+const CURSOR = '▶ ';
+const CURSOR_GAP = '  ';
 
+/**
+ * Windowed list of selected items.
+ *
+ * Paths truncate from the left rather than wrapping. These are absolute paths
+ * shown in a pane that may be half the terminal wide, and wrapping one across
+ * three lines makes the list unreadable — the tail is the part that identifies
+ * the entry, so that is what survives. Same reasoning as `EntryDetails`.
+ */
 export const SelectedList: React.FC<SelectedListProps> = ({ items, cursor, pageSize, focused }) => {
   const half = Math.floor(pageSize / 2);
   let start = Math.max(0, cursor - half);
@@ -31,10 +42,18 @@ export const SelectedList: React.FC<SelectedListProps> = ({ items, cursor, pageS
         const tag = it.isDir ? TAG_DIR : TAG_FILE;
         return (
           <Box key={it.path}>
-            <Text {...(isCursor ? { color: 'cyan' } : {})} wrap="wrap">
-              {tag}
-              {it.path}
-            </Text>
+            {/* marker and tag never shrink; the path truncates from left */}
+            <Box flexShrink={0}>
+              <Text {...(isCursor ? { color: 'cyan' } : {})}>
+                {isCursor ? CURSOR : CURSOR_GAP}
+                {tag}
+              </Text>
+            </Box>
+            <Box flexShrink={1}>
+              <Text {...(isCursor ? { color: 'cyan' } : {})} wrap="truncate-start">
+                {it.path}
+              </Text>
+            </Box>
           </Box>
         );
       })}

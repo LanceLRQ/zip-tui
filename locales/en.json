@@ -55,6 +55,7 @@
     "detailEmpty": "No entry selected",
     "detailChildren": "{{count}} items",
     "selectionTitle": "{{count}} marked · {{size}} total",
+    "selectionTitleDirs": "{{count}} marked · {{dirs}} directories, size not counted",
     "selectionEmpty": "Press Space to mark what to compress",
     "parentHint": "← Up one level",
     "hintFs": "Space mark · m marked · s sort · h hidden · ? help · q quit",
