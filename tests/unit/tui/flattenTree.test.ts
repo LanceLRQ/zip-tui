@@ -4,6 +4,7 @@ import {
   allDirPaths,
   buildArchiveTree,
   flattenTree,
+  hasSingleRootDir,
   initialExpanded,
   parentPathOf,
 } from '../../../src/tui/components/archiveTree';
@@ -135,5 +136,25 @@ describe('parentPathOf', () => {
   it('returns null at the top level, where there is no parent to step out to', () => {
     expect(parentPathOf('a')).toBeNull();
     expect(parentPathOf('')).toBeNull();
+  });
+});
+
+describe('hasSingleRootDir', () => {
+  it('is true when the archive wraps everything in one folder', () => {
+    const tree = buildArchiveTree([file('proj/a.txt'), file('proj/b.txt')]);
+    expect(hasSingleRootDir(tree)).toBe(true);
+  });
+
+  it('is false when the root holds several entries', () => {
+    expect(hasSingleRootDir(SAMPLE)).toBe(false);
+  });
+
+  // a lone file is not a wrapper — extracting it still needs a folder
+  it('is false for a lone root file', () => {
+    expect(hasSingleRootDir(buildArchiveTree([file('only.txt')]))).toBe(false);
+  });
+
+  it('is false for an empty tree', () => {
+    expect(hasSingleRootDir([])).toBe(false);
   });
 });

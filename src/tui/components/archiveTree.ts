@@ -206,6 +206,17 @@ export function flattenTree(
 }
 
 /**
+ * Whether the tree is exactly one top-level directory.
+ *
+ * Archives usually wrap their contents in a single folder, and two separate
+ * features hang off that fact: the tree opens it by default, and extraction
+ * skips creating a wrapper that would only nest it one level deeper.
+ */
+export function hasSingleRootDir(tree: readonly ArchiveTreeNode[]): boolean {
+  return tree.length === 1 && (tree[0]?.isDir ?? false);
+}
+
+/**
  * Which directories start out open.
  *
  * Archives usually wrap their contents in a single folder; leaving that shut
@@ -213,8 +224,8 @@ export function flattenTree(
  * broader root stays closed to keep the first screen readable.
  */
 export function initialExpanded(tree: readonly ArchiveTreeNode[]): Set<string> {
-  const only = tree.length === 1 ? tree[0] : undefined;
-  return only?.isDir ? new Set([only.path]) : new Set();
+  const only = hasSingleRootDir(tree) ? tree[0] : undefined;
+  return only ? new Set([only.path]) : new Set();
 }
 
 /** Every directory path in the tree — the expanded set for "open everything". */
