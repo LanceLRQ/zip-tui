@@ -181,3 +181,48 @@ describe('ActionPanel messages', () => {
     expect(out).toContain('Esc');
   });
 });
+
+describe('ActionPanel preview height', () => {
+  beforeAll(async () => {
+    await initI18n('zh');
+  });
+
+  const many = Array.from({ length: 20 }, (_, i) => `some-project-directory/source-${i}.ts`);
+  const LONG_CMD = { cmd: '7z', args: ['a', '-mx6', '/w/proj/proj.7z', ...many] };
+
+  // losing the way out is far worse than losing the tail of a command whose
+  // item count the title already states
+  it('keeps the controls visible when the command is clipped', () => {
+    const { lastFrame } = render(
+      <ActionPanel
+        kind="compress"
+        title="压缩 20 项"
+        format="7z"
+        level={6}
+        output="/w/proj/proj.7z"
+        command={LONG_CMD}
+        focusField={0}
+        previewRows={4}
+      />,
+    );
+    const out = lastFrame() ?? '';
+    expect(out).toContain('Esc');
+    expect(out).toContain('Enter');
+  });
+
+  it('still shows the start of the command so its shape is readable', () => {
+    const { lastFrame } = render(
+      <ActionPanel
+        kind="compress"
+        title="压缩 20 项"
+        format="7z"
+        level={6}
+        output="/w/proj/proj.7z"
+        command={LONG_CMD}
+        focusField={0}
+        previewRows={4}
+      />,
+    );
+    expect(lastFrame() ?? '').toContain('7z a -mx6');
+  });
+});

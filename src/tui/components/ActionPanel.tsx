@@ -19,6 +19,15 @@ export interface ActionPanelProps {
   /** Index of the focused field, in the order rendered. */
   focusField: number;
   /**
+   * Rows the command preview may occupy before being clipped.
+   *
+   * A long input list wraps past the terminal height, and whatever overflows is
+   * lost. The controls must not be what is lost — a panel with no visible way
+   * to cancel traps the user — so the preview is clipped instead. Omit to let
+   * it grow freely, which is fine for short commands.
+   */
+  previewRows?: number | undefined;
+  /**
    * Something the user should know but may proceed past — most often that the
    * destination already exists.
    */
@@ -73,6 +82,7 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
   scopeLabel,
   command,
   focusField,
+  previewRows,
   warning,
   error,
 }) => {
@@ -95,7 +105,13 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
       {fields.map((f) => (
         <Field key={f.label} label={f.label} value={f.value} focused={f.focused} />
       ))}
-      <CommandPreview command={command} />
+      {previewRows === undefined ? (
+        <CommandPreview command={command} />
+      ) : (
+        <Box height={previewRows} overflow="hidden" flexDirection="column">
+          <CommandPreview command={command} />
+        </Box>
+      )}
       {warning ? <Text color="yellow">{warning}</Text> : null}
       {error ? <Text color="red">{error}</Text> : null}
       <Text dimColor wrap="truncate">
