@@ -5,13 +5,15 @@ import type { TreeNode } from '../components/VirtualTree.js';
 /**
  * Row id of the ".." entry.
  *
- * Filesystem rows are keyed by absolute path so they can never collide with
- * this. Archive rows are keyed by the archive-internal path, so a package
- * holding a top-level entry named exactly `__parent__` would — the sentinel is
- * kept deliberately unlikely rather than made impossible, because a real id
- * has to survive being rendered and compared as a plain string.
+ * A doubled slash cannot occur in any real id: archive paths are rebuilt from
+ * filtered segments joined singly, and `path.join` collapses separators. That
+ * makes this collision-proof rather than merely improbable, which matters
+ * because a collision would be silent — the duplicate row would navigate out
+ * instead of descending, and would lose its checkbox in the list.
+ *
+ * The id is never displayed; the row renders its own `..` label.
  */
-export const PARENT_ID = '__parent__';
+export const PARENT_ID = '//parent';
 
 export interface BrowserRow extends TreeNode {
   /** True when pressing Enter here opens a package rather than a directory. */
@@ -33,19 +35,21 @@ function parentRow(): BrowserRow {
 /**
  * The nodes directly under `innerDir`, one level deep.
  *
- * An unknown path yields nothing rather than throwing, because this runs in a
- * render path: a stale inner directory should show an empty listing, not crash
- * the app.
+ * Returns null when the path does not resolve, so a caller can tell a stale
+ * inner directory from a genuinely empty one — the same `null`-means-nothing-
+ * to-do idiom `goUp` and `collapseParent` use. Both cases look identical
+ * otherwise, and a stale path is a state bug worth surfacing rather than
+ * rendering as an empty listing.
  */
 export function childrenOf(
   tree: readonly ArchiveTreeNode[],
   innerDir: string,
-): readonly ArchiveTreeNode[] {
+): readonly ArchiveTreeNode[] | null {
   if (innerDir === '') return tree;
   let level: readonly ArchiveTreeNode[] = tree;
   for (const segment of innerDir.split('/').filter((s) => s !== '')) {
     const next = level.find((n) => n.name === segment);
-    if (!next) return [];
+    if (!next) return null;
     level = next.children;
   }
   return level;
@@ -64,7 +68,10 @@ export function archiveRows(
   withParent: boolean,
 ): BrowserRow[] {
   const rows: BrowserRow[] = withParent ? [parentRow()] : [];
-  for (const n of childrenOf(tree, innerDir)) {
+  const children = childrenOf(tree, innerDir);
+  // a stale inner path still offers the way out rather than a bare empty screen
+  if (children === null) return rows;
+  for (const n of children) {
     rows.push({
       id: n.path,
       label: n.name,
@@ -91,6 +98,8 @@ export function fsRows(nodes: readonly TreeNode[], withParent: boolean): Browser
   for (const n of nodes) {
     rows.push({
       ...n,
+      // this is a flat one-level listing whatever the input carried
+      depth: 0,
       // a directory's own byte count is always 0 and says nothing useful
       sizeLabel: n.isDir ? '-' : formatSize(n.size),
       isArchive: !n.isDir && Boolean(detectFormatFromExtension(n.label)),
@@ -104,8 +113,8 @@ export function fsRows(nodes: readonly TreeNode[], withParent: boolean): Browser
  *
  * `default` keeps whatever order the producer chose — directories first by
  * name on the filesystem, the tree's own order inside an archive — and returns
- * the array unchanged, so a caller holding it in React state sees no new
- * identity on a re-render that did not reorder anything.
+ * the array unchanged rather than copying it. No consumer depends on that
+ * identity yet; it costs nothing and keeps the door open for a memoised list.
  *
  * `size` abandons that grouping: the reason to sort by size is to find what is
  * taking up room, and pinning directories to the top would bury exactly that.

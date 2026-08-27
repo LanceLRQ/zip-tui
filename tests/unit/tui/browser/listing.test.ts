@@ -26,24 +26,30 @@ const TREE = buildArchiveTree([
 
 describe('childrenOf', () => {
   it('returns the roots for the empty inner path', () => {
-    expect(childrenOf(TREE, '').map((n) => n.name)).toEqual(['app', 'readme.md']);
+    expect(childrenOf(TREE, '')?.map((n) => n.name)).toEqual(['app', 'readme.md']);
   });
 
   it('descends one level', () => {
-    expect(childrenOf(TREE, 'app').map((n) => n.name)).toEqual(['vendor', 'index.js']);
+    expect(childrenOf(TREE, 'app')?.map((n) => n.name)).toEqual(['vendor', 'index.js']);
   });
 
   it('descends several levels', () => {
-    expect(childrenOf(TREE, 'app/vendor').map((n) => n.name)).toEqual(['lib.js']);
+    expect(childrenOf(TREE, 'app/vendor')?.map((n) => n.name)).toEqual(['lib.js']);
   });
 
   // a stale inner directory must not crash a render path
-  it('returns nothing for a path that is not in the tree', () => {
-    expect(childrenOf(TREE, 'nope/at/all')).toEqual([]);
+  it('returns null for a path that is not in the tree', () => {
+    expect(childrenOf(TREE, 'nope/at/all')).toBeNull();
   });
 
-  it('returns nothing when a mid-path segment exists but is a leaf', () => {
-    expect(childrenOf(TREE, 'readme.md/deeper')).toEqual([]);
+  it('returns null when a mid-path segment exists but is a leaf', () => {
+    expect(childrenOf(TREE, 'readme.md/deeper')).toBeNull();
+  });
+
+  // location.ts requires innerDir to be normalised; this tolerates slop rather
+  // than silently descending to the wrong level
+  it('tolerates leading and trailing slashes', () => {
+    expect(childrenOf(TREE, '/app/')?.map((n) => n.name)).toEqual(['vendor', 'index.js']);
   });
 });
 
@@ -70,6 +76,14 @@ describe('archiveRows', () => {
   it('never flags an entry as enterable', () => {
     const nested = buildArchiveTree([entry('inner.zip', 10), entry('a.txt', 1)]);
     expect(archiveRows(nested, '', true).every((r) => r.isArchive === false)).toBe(true);
+  });
+
+  // the sentinel must not be forgeable by a real entry: a collision would
+  // navigate out instead of descending, and would collide as a React key
+  it('cannot be impersonated by a real top-level entry', () => {
+    const hostile = buildArchiveTree([entry('//parent', 1), entry(PARENT_ID, 1)]);
+    const rows = archiveRows(hostile, '', true);
+    expect(rows.filter((r) => r.id === PARENT_ID)).toHaveLength(1);
   });
 });
 
@@ -102,6 +116,10 @@ describe('fsRows', () => {
 
   it('prepends a parent row when asked', () => {
     expect(fsRows([node('/w/a.txt', 'a.txt', false)], true)[0]?.id).toBe(PARENT_ID);
+  });
+
+  it('still offers the way out of an empty directory', () => {
+    expect(fsRows([], true).map((r) => r.id)).toEqual([PARENT_ID]);
   });
 });
 
@@ -146,5 +164,10 @@ describe('sortRows', () => {
     const before = ROWS.map((r) => r.label);
     sortRows(ROWS, 'size');
     expect(ROWS.map((r) => r.label)).toEqual(before);
+  });
+
+  it('handles a listing that is nothing but a parent row', () => {
+    const onlyParent = fsRows([], true);
+    expect(sortRows(onlyParent, 'size').map((r) => r.id)).toEqual([PARENT_ID]);
   });
 });
