@@ -48,6 +48,17 @@ describe('stripArchiveExtension', () => {
   it('refuses to strip a name down to nothing', () => {
     expect(stripArchiveExtension('.gz')).toBe('.gz');
   });
+
+  // the guard has to survive the loop continuing past the longest match:
+  // falling through to ".gz" would slice this down to ".tar"
+  it('refuses to strip a two-part extension down to nothing', () => {
+    expect(stripArchiveExtension('.tar.gz')).toBe('.tar.gz');
+    expect(stripArchiveExtension('.tar.bz2')).toBe('.tar.bz2');
+  });
+
+  it('matches a two-part extension case-insensitively', () => {
+    expect(stripArchiveExtension('Backup.TAR.GZ')).toBe('Backup');
+  });
 });
 
 describe('defaultExtractDir', () => {
@@ -76,6 +87,12 @@ describe('defaultExtractDir', () => {
   it('treats an empty archive as loose contents', () => {
     expect(defaultExtractDir('/dl/empty.zip', [])).toBe('/dl/empty');
   });
+
+  // a bare filename has no directory component; dirname gives "."
+  it('handles a relative archive path', () => {
+    const tree = buildArchiveTree([file('a.jpg')]);
+    expect(defaultExtractDir('photos.zip', tree)).toBe('photos');
+  });
 });
 
 describe('suggestArchiveName', () => {
@@ -101,5 +118,9 @@ describe('suggestArchiveName', () => {
 
   it('uses a generic stem at the filesystem root, which has no name', () => {
     expect(suggestArchiveName([], '/', '7z')).toBe('archive.7z');
+  });
+
+  it('ignores a trailing slash on the browsed directory', () => {
+    expect(suggestArchiveName([], '/work/proj/', '7z')).toBe('proj.7z');
   });
 });
