@@ -3,6 +3,7 @@ import type { ArchiveEntry } from '../../../../src/engine/types';
 import {
   archiveRows,
   childrenOf,
+  firstContentIndex,
   fsRows,
   PARENT_ID,
   sortRows,
@@ -169,5 +170,24 @@ describe('sortRows', () => {
   it('handles a listing that is nothing but a parent row', () => {
     const onlyParent = fsRows([], true);
     expect(sortRows(onlyParent, 'size').map((r) => r.id)).toEqual([PARENT_ID]);
+  });
+});
+
+describe('firstContentIndex', () => {
+  it('skips the parent row', () => {
+    expect(firstContentIndex(fsRows([node('/w/a.txt', 'a.txt', false)], true))).toBe(1);
+  });
+
+  it('starts at the top when there is no parent row', () => {
+    expect(firstContentIndex(fsRows([node('/w/a.txt', 'a.txt', false)], false))).toBe(0);
+  });
+
+  // a directory holding nothing but the way out still needs a valid index
+  it('returns 1 for a listing that is only a parent row', () => {
+    expect(firstContentIndex(fsRows([], true))).toBe(1);
+  });
+
+  it('returns 0 for an empty listing', () => {
+    expect(firstContentIndex([])).toBe(0);
   });
 });

@@ -1,6 +1,7 @@
 {
   "menu": {
     "title": "zip-tui",
+    "browser": "浏览器（新）",
     "create": "压缩文件",
     "extract": "解压文件",
     "view": "查看压缩包",

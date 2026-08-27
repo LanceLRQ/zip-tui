@@ -109,6 +109,17 @@ export function fsRows(nodes: readonly TreeNode[], withParent: boolean): Browser
 }
 
 /**
+ * Where the cursor should land when a listing is first shown or reset.
+ *
+ * Never the `..` row: opening a directory with the cursor on its parent means
+ * the first Enter steps back out of the place you just opened. Stepping out is
+ * something you ask for, not the default.
+ */
+export function firstContentIndex(rows: readonly BrowserRow[]): number {
+  return rows[0]?.id === PARENT_ID ? 1 : 0;
+}
+
+/**
  * Reorders a listing.
  *
  * `default` keeps whatever order the producer chose — directories first by

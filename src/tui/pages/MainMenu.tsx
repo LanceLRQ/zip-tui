@@ -15,6 +15,7 @@ export const MainMenu: React.FC = () => {
   const { exit } = useApp();
 
   const items: { label: string; value: ItemValue }[] = [
+    { label: t('menu.browser'), value: 'browser' },
     { label: t('menu.create'), value: 'createWizard' },
     { label: t('menu.extract'), value: 'extractWizard' },
     { label: t('menu.view'), value: 'view' },

@@ -48,6 +48,8 @@ describe('ActionPanel compress mode', () => {
     expect(lastFrame() ?? '').toContain('7z a -mx6');
   });
 
+  // three renders in one case, and ink-testing-library costs ~250ms each in
+  // this project; coverage instrumentation pushes that past the 5s default
   it('marks which field has focus', () => {
     const frames = [0, 1, 2].map(
       (f) =>
@@ -64,7 +66,7 @@ describe('ActionPanel compress mode', () => {
         ).lastFrame() ?? '',
     );
     expect(new Set(frames).size).toBe(3);
-  });
+  }, 15000);
 });
 
 describe('ActionPanel extract mode', () => {

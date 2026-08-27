@@ -1,6 +1,7 @@
 {
   "menu": {
     "title": "zip-tui",
+    "browser": "Browser (new)",
     "create": "Compress",
     "extract": "Extract",
     "view": "View archive",

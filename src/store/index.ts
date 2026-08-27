@@ -4,7 +4,14 @@ import { createDepsSlice, type DepsSlice } from './depsSlice.js';
 import { createExecutionSlice, type ExecutionSlice } from './executionSlice.js';
 import { createWizardSlice, type WizardSlice } from './wizardSlice.js';
 
-export type AppRoute = 'menu' | 'createWizard' | 'extractWizard' | 'view' | 'deps' | 'settings';
+export type AppRoute =
+  | 'menu'
+  | 'createWizard'
+  | 'extractWizard'
+  | 'view'
+  | 'deps'
+  | 'settings'
+  | 'browser';
 
 export interface RouteSlice {
   route: AppRoute;

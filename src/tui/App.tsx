@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { detectAll } from '../deps/detect.js';
 import { useAppStore } from '../store/index.js';
 import { useTerminalRows } from './hooks/useTerminalRows.js';
+import { BrowserPage } from './pages/BrowserPage.js';
 import { CreateWizard } from './pages/CreateWizard.js';
 import { DependenciesPage } from './pages/DependenciesPage.js';
 import { ExtractWizard } from './pages/ExtractWizard.js';
@@ -29,6 +30,7 @@ export const App: React.FC = () => {
       {route === 'view' && <ViewPage />}
       {route === 'deps' && <DependenciesPage />}
       {route === 'settings' && <SettingsPage />}
+      {route === 'browser' && <BrowserPage />}
     </Box>
   );
 };

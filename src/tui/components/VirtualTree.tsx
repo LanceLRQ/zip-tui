@@ -19,7 +19,7 @@ export interface VirtualTreeProps {
   nodes: readonly TreeNode[];
   pageSize: number;
   selectedIndex: number;
-  selectedIds?: Set<string>;
+  selectedIds?: ReadonlySet<string>;
   parentId?: string;
   onToggle?: (id: string) => void;
   countLabel?: string;
