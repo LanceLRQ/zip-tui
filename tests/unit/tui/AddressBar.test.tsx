@@ -29,13 +29,18 @@ describe('AddressBar', () => {
 
   // the icon is the only signal for which kind of location this is, so it must
   // outlive the path text when space runs out
-  it('keeps the icon when a long path has to be truncated', () => {
+  it('truncates the path from the left, keeping the icon and the deepest segment', () => {
     const deep = `/${'very-long-directory-name/'.repeat(12)}leaf`;
     const { lastFrame } = render(<AddressBar kind="archive" label={deep} />);
-    const out = lastFrame() ?? '';
-    expect(out).toContain('📦');
-    // truncating from the left keeps the end of the path, which is the part
-    // that says where you are
-    expect(out).toContain('leaf');
+    const frame = lastFrame() ?? '';
+
+    // a broken layout would wrap instead of truncating, and the two assertions
+    // below would both still pass — so pin the single line first
+    expect(frame.replace(/\n$/, '').split('\n')).toHaveLength(1);
+    // the ellipsis proves truncation actually happened rather than the string
+    // merely fitting
+    expect(frame).toContain('…');
+    expect(frame).toContain('📦');
+    expect(frame).toContain('leaf');
   });
 });
