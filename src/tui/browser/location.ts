@@ -104,3 +104,13 @@ export function locationLabel(loc: Location): string {
   if (loc.kind === 'fs') return loc.dir;
   return loc.innerDir === '' ? loc.archivePath : `${loc.archivePath} › ${loc.innerDir}`;
 }
+
+/**
+ * Compile-time guard for exhaustive handling of `Location`'s kinds.
+ *
+ * Adding a kind must break every `switch` that dispatches on it, rather than
+ * letting the new kind fall silently into whichever branch happens to be last.
+ */
+export function assertNeverKind(kind: never): never {
+  throw new Error(`unhandled location kind: ${String(kind)}`);
+}

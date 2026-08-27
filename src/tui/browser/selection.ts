@@ -1,4 +1,4 @@
-import type { Location } from './location.js';
+import { assertNeverKind, type Location } from './location.js';
 
 /** Which domain a selection belongs to — mirrors `Location`'s two kinds. */
 export type LocationKind = Location['kind'];
@@ -85,11 +85,6 @@ export const EMPTY_DOMAINS: DomainSelections = {
   fs: EMPTY_SELECTION,
   archive: EMPTY_SELECTION,
 };
-
-/** Compile-time guard: adding a `Location` kind must break here, loudly. */
-function assertNeverKind(kind: never): never {
-  throw new Error(`unhandled location kind: ${String(kind)}`);
-}
 
 /** The selection matching the current location's kind. */
 export function forLocation(d: DomainSelections, kind: LocationKind): Selection {
