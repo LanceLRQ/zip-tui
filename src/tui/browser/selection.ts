@@ -38,9 +38,14 @@ export function toggle(sel: Selection, item: SelectionItem): Selection {
   return { items: [...sel.items, item], ids };
 }
 
-/** Unmarks a row by path. */
+/**
+ * Unmarks a row by path.
+ *
+ * Returns the same object when the path was not marked, so a consumer holding
+ * this in React state can rely on identity to skip a re-render on a key press
+ * that changed nothing.
+ */
 export function remove(sel: Selection, path: string): Selection {
-  // returning the same object lets React skip a re-render on a no-op key press
   if (!sel.ids.has(path)) return sel;
   const ids = new Set(sel.ids);
   ids.delete(path);
@@ -81,9 +86,23 @@ export const EMPTY_DOMAINS: DomainSelections = {
   archive: EMPTY_SELECTION,
 };
 
+/** Compile-time guard: adding a `Location` kind must break here, loudly. */
+function assertNeverKind(kind: never): never {
+  throw new Error(`unhandled location kind: ${String(kind)}`);
+}
+
 /** The selection matching the current location's kind. */
 export function forLocation(d: DomainSelections, kind: LocationKind): Selection {
-  return kind === 'fs' ? d.fs : d.archive;
+  switch (kind) {
+    case 'fs':
+      return d.fs;
+    case 'archive':
+      return d.archive;
+    default:
+      // a new Location kind must get its own domain — the two path namespaces
+      // here must never be merged, so this has to fail at compile time
+      return assertNeverKind(kind);
+  }
 }
 
 /** Replaces one domain, leaving the other exactly as it was. */
@@ -92,7 +111,14 @@ export function setDomain(
   kind: LocationKind,
   sel: Selection,
 ): DomainSelections {
-  return kind === 'fs' ? { ...d, fs: sel } : { ...d, archive: sel };
+  switch (kind) {
+    case 'fs':
+      return { ...d, fs: sel };
+    case 'archive':
+      return { ...d, archive: sel };
+    default:
+      return assertNeverKind(kind);
+  }
 }
 
 /**
@@ -101,7 +127,12 @@ export function setDomain(
  * Called on entering and on leaving a package: archive-internal paths cannot
  * be acted on once you are back outside, and carrying a previous package's
  * marks into a new one would be actively wrong.
+ *
+ * Returns the same object when the domain is already empty. This runs on every
+ * archive navigation, and most visits mark nothing, so allocating a fresh
+ * object each time would re-render the browser for no reason.
  */
 export function resetArchiveDomain(d: DomainSelections): DomainSelections {
+  if (d.archive === EMPTY_SELECTION) return d;
   return { ...d, archive: EMPTY_SELECTION };
 }
