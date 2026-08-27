@@ -8,20 +8,32 @@ import { parentPathOf } from '../components/archiveTree.js';
  * material to compress, an archive's interior is a source to extract from.
  * There is deliberately no "compress mode" or "extract mode" — the address
  * decides what the situation is, and the address bar shows it.
+ *
+ * `innerDir` must already be a normalised archive path: no leading or trailing
+ * slash, exactly as `buildArchiveTree` emits node paths. `goUp` splits it with
+ * `parentPathOf`, which trims at the last slash — a trailing one would make it
+ * step up zero levels instead of one, silently.
  */
 export type Location =
   | { kind: 'fs'; dir: string }
   | { kind: 'archive'; archivePath: string; innerDir: string };
 
+/** Browsing a real directory. Paired with `archiveLocation` so call sites stay symmetric. */
 export function fsLocation(dir: string): Location {
   return { kind: 'fs', dir };
 }
 
+/** Browsing inside a package. `innerDir` defaults to the archive's root. */
 export function archiveLocation(archivePath: string, innerDir = ''): Location {
   return { kind: 'archive', archivePath, innerDir };
 }
 
-/** True at the filesystem root, where there is no parent left to step out to. */
+/**
+ * True at the filesystem root, where there is no parent left to step out to.
+ *
+ * `dir` is assumed to be a non-empty absolute path; an empty string would
+ * report true, since its parsed root is also empty.
+ */
 export function isFsRoot(dir: string): boolean {
   return path.parse(dir).root === dir;
 }
@@ -32,6 +44,9 @@ export function isFsRoot(dir: string): boolean {
  * `nodeId` is whatever the highlighted row carries: an absolute path on the
  * filesystem side, an archive-internal path inside a package. Either way it is
  * already the full identifier of the new location, so nothing needs joining.
+ *
+ * Inside an archive, `nodeId` must satisfy the same normalisation contract as
+ * `Location.innerDir`.
  */
 export function enterDir(loc: Location, nodeId: string): Location {
   if (loc.kind === 'fs') return { kind: 'fs', dir: nodeId };
@@ -40,7 +55,7 @@ export function enterDir(loc: Location, nodeId: string): Location {
 
 /** Opens an archive found on the filesystem, landing at its root. */
 export function enterArchive(archivePath: string): Location {
-  return { kind: 'archive', archivePath, innerDir: '' };
+  return archiveLocation(archivePath);
 }
 
 export interface GoUpResult {
@@ -58,6 +73,10 @@ export interface GoUpResult {
  *
  * Returns null only at the filesystem root, so the caller can leave the key
  * press unhandled rather than doing something arbitrary.
+ *
+ * The two branches split paths differently on purpose: `dir` follows the host
+ * separator, while archive-internal paths are always POSIX-style, so they go
+ * through `parentPathOf` instead of `path.dirname`.
  */
 export function goUp(loc: Location): GoUpResult | null {
   if (loc.kind === 'fs') {

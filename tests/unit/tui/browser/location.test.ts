@@ -23,6 +23,18 @@ describe('enterDir', () => {
   });
 });
 
+describe('archiveLocation', () => {
+  // every other call site passes innerDir explicitly, so the default would
+  // otherwise go unexercised — and coverage does not flag it
+  it('defaults to the archive root', () => {
+    expect(archiveLocation('/a/x.zip')).toEqual({
+      kind: 'archive',
+      archivePath: '/a/x.zip',
+      innerDir: '',
+    });
+  });
+});
+
 describe('enterArchive', () => {
   it('lands at the archive root', () => {
     expect(enterArchive('/a/x.zip')).toEqual({
