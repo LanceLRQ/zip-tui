@@ -106,3 +106,76 @@ describe('BrowserPage on the filesystem', () => {
     expect(out).not.toContain('共 0 B');
   });
 });
+
+describe('BrowserPage compress panel', () => {
+  it('opens the compress panel on `a` once something is marked', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialDir={dir} />);
+    await flush();
+    stdin.write(' ');
+    await flush();
+    stdin.write('a');
+    await flush();
+    const out = lastFrame() ?? '';
+    expect(out).toContain('格式');
+    expect(out).toContain('输出');
+  });
+
+  // nothing marked means nothing to compress, so the key must do nothing
+  it('ignores `a` when nothing is marked', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialDir={dir} />);
+    await flush();
+    stdin.write('a');
+    await flush();
+    expect(lastFrame() ?? '').not.toContain('格式');
+  });
+
+  it('names the archive after the lone marked directory', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialDir={dir} />);
+    await flush();
+    stdin.write(' ');
+    await flush();
+    stdin.write('a');
+    await flush();
+    expect(lastFrame() ?? '').toContain('sub.7z');
+  });
+
+  // gz and bz2 take exactly one input and throw otherwise; that must surface as
+  // a message, not as a crashed render
+  it('reports the adapter error instead of crashing on a format that cannot take the selection', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialDir={dir} />);
+    await flush();
+    stdin.write(' ');
+    await flush();
+    stdin.write('\x1b[B'); // down
+    await flush();
+    stdin.write(' ');
+    await flush();
+    stdin.write('a');
+    await flush();
+    stdin.write('\x1b[D'); // left, 7z -> zip
+    await flush();
+    stdin.write('\x1b[D'); // left, zip -> bz2
+    await flush();
+    const out = lastFrame() ?? '';
+    expect(out).toContain('bz2');
+    expect(out).toContain('got 2');
+    // the way out must stay visible even in the error state
+    expect(out).toContain('Esc');
+  });
+
+  it('edits the output name by typing once the output field has focus', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialDir={dir} />);
+    await flush();
+    stdin.write(' ');
+    await flush();
+    stdin.write('a');
+    await flush();
+    stdin.write('\t');
+    await flush();
+    stdin.write('\t');
+    await flush();
+    stdin.write('ZZ');
+    await flush();
+    expect(lastFrame() ?? '').toContain('sub.7zZZ');
+  });
+});

@@ -4,9 +4,15 @@ import type React from 'react';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { buildDefaultRegistry } from '../../engine/builder.js';
 import { runCommand } from '../../engine/executor.js';
-import type { ArchiveEntry } from '../../engine/types.js';
+import {
+  type ArchiveEntry,
+  type BuiltCommand,
+  FORMAT_EXTENSIONS,
+  type FormatId,
+} from '../../engine/types.js';
 import { useAppStore } from '../../store/index.js';
 import { type ActionId, availableActions } from '../browser/actions.js';
+import { suggestArchiveName } from '../browser/defaults.js';
 import { matchesKey } from '../browser/keymap.js';
 import {
   archiveRows,
@@ -30,12 +36,14 @@ import {
   count,
   EMPTY_DOMAINS,
   forLocation,
+  paths,
   remove,
   resetArchiveDomain,
   setDomain,
   toggle,
   totalSize,
 } from '../browser/selection.js';
+import { ActionPanel } from '../components/ActionPanel.js';
 import { AddressBar } from '../components/AddressBar.js';
 import {
   type ArchiveListing,
@@ -63,7 +71,15 @@ import { useTerminalRows } from '../hooks/useTerminalRows.js';
 // two-line detail bar (3), the rule above the hint (1), and the hint (1)
 export const CHROME_ROWS = 10;
 
-type Overlay = 'none' | 'selection' | 'help';
+// what the action panel spends on things that are not the command preview:
+// the border (2), the title (1), three fields (3), a warning and an error line
+// (2), the gap the preview's own border adds (1), and the control hint (1).
+// The preview is clipped to whatever is left, because the control hint is what
+// would otherwise fall off a short terminal — and a panel with no visible way
+// out traps the user.
+const PANEL_CHROME = 10;
+
+type Overlay = 'none' | 'selection' | 'help' | 'compress';
 
 export interface BrowserPageProps {
   /** Where to open; defaults to the working directory. */
@@ -90,6 +106,10 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
   const [listing, setListing] = useState<ArchiveListing | null>(null);
   const [overlay, setOverlay] = useState<Overlay>('none');
   const [overlayCursor, setOverlayCursor] = useState(0);
+  const [format, setFormat] = useState<FormatId>('7z');
+  const [level, setLevel] = useState(6);
+  const [output, setOutput] = useState('');
+  const [panelField, setPanelField] = useState(0);
   /** Row to land on once the listing for a new location has rendered. */
   const [pendingFocus, setPendingFocus] = useState<string | null>(null);
   /** Location the cursor has already been placed for. */
@@ -217,10 +237,18 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
       case 'leave':
         stepOut();
         return;
-      case 'compress':
+      case 'compress': {
+        // availableActions only offers this on the filesystem with something
+        // marked, but the location narrowing has to be re-stated for the type
+        if (location.kind !== 'fs') return;
+        setOutput(`${location.dir}/${suggestArchiveName(selection.items, location.dir, format)}`);
+        setPanelField(0);
+        setOverlay('compress');
+        return;
+      }
       case 'extract':
       case 'test':
-        // wired in Tasks 13 and 14; the binding is proven here
+        // wired in Task 14; the binding is proven here
         return;
       default:
         return;
@@ -231,6 +259,41 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
     (input, key) => {
       if (key.escape) {
         setOverlay('none');
+        return;
+      }
+      if (overlay === 'compress') {
+        if (key.tab) {
+          setPanelField((f) => (f + 1) % 3);
+          return;
+        }
+        if (panelField === 0 && (key.leftArrow || key.rightArrow)) {
+          const all = Object.keys(FORMAT_EXTENSIONS) as FormatId[];
+          const at = all.indexOf(format);
+          const next = all[(at + (key.rightArrow ? 1 : all.length - 1)) % all.length];
+          if (next && location.kind === 'fs') {
+            setFormat(next);
+            // the extension is part of the name, so it follows the format
+            setOutput(`${location.dir}/${suggestArchiveName(selection.items, location.dir, next)}`);
+          }
+          return;
+        }
+        if (panelField === 1 && (key.leftArrow || key.rightArrow)) {
+          const levels = [1, 3, 6, 9];
+          const at = levels.indexOf(level);
+          const next = levels[(at + (key.rightArrow ? 1 : levels.length - 1)) % levels.length];
+          if (next !== undefined) setLevel(next);
+          return;
+        }
+        if (panelField === 2) {
+          // typing straight into the field: the value truncates from the left,
+          // so what you are typing stays on screen without a cursor to track
+          if (key.backspace || key.delete) {
+            setOutput((o) => o.slice(0, -1));
+            return;
+          }
+          if (input !== '' && !key.ctrl && !key.meta) setOutput((o) => o + input);
+          return;
+        }
         return;
       }
       if (overlay === 'help') {
@@ -369,6 +432,40 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
         title={title}
         hint={`d ${t('common.cancel')} · ${t('help.close')}`}
         emptyLabel={t('browser.selectionEmpty')}
+      />
+    );
+  }
+
+  if (overlay === 'compress') {
+    // gz and bz2 reject anything but a single input, and they do it by
+    // throwing. Building the command inside the render body means that throw
+    // would take the whole TUI down, so the failure is caught and shown in the
+    // panel's own error slot instead. The adapter's wording is passed through
+    // verbatim, the same way tool stderr is.
+    let command: BuiltCommand = { cmd: '', args: [] };
+    let buildError: string | undefined;
+    try {
+      command = buildDefaultRegistry()
+        .get(format)
+        .buildCreate({
+          archive: output,
+          inputs: paths(selection),
+          level,
+        });
+    } catch (e) {
+      buildError = e instanceof Error ? e.message : String(e);
+    }
+    return (
+      <ActionPanel
+        kind="compress"
+        title={t('action.compressTitle', { count: count(selection) })}
+        format={format}
+        level={level}
+        output={output}
+        focusField={panelField}
+        command={command}
+        previewRows={Math.max(2, rows - PANEL_CHROME)}
+        error={buildError}
       />
     );
   }
