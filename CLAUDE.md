@@ -10,7 +10,11 @@ The MVP is implemented. All of Phase 0–11 in `plans/tasks.md` has landed, and 
 - **CLI subcommands routed**: `a` / `x` / `l` / `deps` / `config`. `t` and `update` are declared in the design but not yet wired into `src/index.ts` — they remain V1 scope
 - **Not yet released**: the repo has no git tag, so the 4-platform release matrix in `.github/workflows/release.yml` has never actually run. Only the host-platform binary is verified, via `tests/e2e/binary-smoke.test.ts`
 
-Recent work is concentrated in the TUI layer — `src/tui/components/FilePicker.tsx` (a four-mode reusable dialog) has taken most of the last dozen commits.
+The TUI has since been rebuilt around a single unified browser. The main menu and
+the four wizard pages are gone; `src/tui/pages/` now holds `BrowserPage`,
+`DependenciesPage` and `SettingsPage` only. Integrity testing (`t`) and selective
+extraction, both listed as V1 in the original plan, arrived with it — the engine
+already supported them.
 
 ## What this project is
 
@@ -66,7 +70,8 @@ Entry (src/index.ts)
   ├─ parse argv → check TTY → dispatch to TUI or Direct Runner
   │
   ├─→ TUI Layer (src/tui/)
-  │     pages/ + components/ consume Engine via Zustand slices (src/store/)
+  │     browser/ (pure logic) + components/ + pages/, consuming Engine
+  │     via Zustand slices (src/store/)
   │
   ├─→ Direct Runner (src/runner/direct.ts)
   │     non-TTY path; calls Engine directly; streams stdout/stderr to terminal
@@ -92,6 +97,39 @@ The entry point detects `process.stdin.isTTY` plus env vars `CI` and `ZT_NO_TUI`
 
 There is intentionally **no `--no-tui` / `--silence` / `--auto` flag** — this was discussed and explicitly rejected. If you find yourself adding one, that's a regression.
 
+### Location-derived actions, not modes
+
+The TUI is one browser. Compression and extraction are not two modes: they fall
+out of `Location` (`fs` or `archive`), the row under the cursor, and what is
+marked in the current domain. Entering a `.zip` *is* viewing it; extracting is an
+action taken from inside. If you find yourself adding a mode state or an
+`isExtractMode` boolean, that is a step backwards.
+
+The marked set is split by location kind. The filesystem domain holds absolute
+paths (material to compress), the archive domain holds archive-internal paths
+(entries to pull out), and the two are never merged — feeding one to the other
+builds a nonsensical command.
+
+Contextual keys (`a` / `x` / `t` / `Enter` / `←`) have a single source of truth:
+`availableActions` in `src/tui/browser/actions.ts` returns them, `matchesKey`
+maps the displayed key to Ink's flags, and the page dispatches by action id. Do
+not re-derive them from `isDir` / `isArchive` inside `useInput` — the hint line
+and the handler would then drift apart with nothing to catch it.
+
+Keys are lowercase and never distinguish case (`g` / `G` is the one exception,
+being the vi convention). The TUI keys line up with the CLI subcommands: `a`,
+`x` and `t` mean the same thing in both places.
+
+### Height budgets are constants, and they are tested
+
+`CHROME_ROWS` and `PANEL_CHROME` in `BrowserPage.tsx` say how many rows are
+spent on things that are not the list or the command preview. Get one wrong and
+the screen breaks silently: Ink's fixed-height box leaves Yoga no room to spill
+into, so overflow shows up as *squeezed-out rows*, not as a scrollbar or a
+visible cut. `tests/unit/tui/browserLayout.test.tsx` imports both constants and
+asserts on the field labels that disappear first. Assert on those, not on the
+hint line — the hint survives overflow as overwritten text.
+
 ### Password handling
 
 - Passwords pass inline (`-pPASSWORD` / `-PPASS`) and **will** appear in `ps`. This is an accepted trade-off; do not introduce pty-based prompts to "fix" it.
@@ -100,7 +138,12 @@ There is intentionally **no `--no-tui` / `--silence` / `--auto` flag** — this 
 
 ### i18n scope
 
-`locales/{zh,en}.json` only translates **UI strings** (menu labels, buttons, wizard prompts). Subprocess stdout/stderr, log lines, and command previews are passed through verbatim. This is deliberate — users debugging tool errors should see the raw English message and be able to grep / paste it elsewhere.
+`locales/{zh,en}.json` only translates **UI strings** (labels, buttons, hints). Subprocess stdout/stderr, log lines, and command previews are passed through verbatim. This is deliberate — users debugging tool errors should see the raw English message and be able to grep / paste it elsewhere. Adapter errors surfaced in the action panel follow the same rule.
+
+Before deleting a key that looks unused, note that `HelpPanel` builds some as
+`` t(`help.${entry}`) ``, which a whole-key search will not find.
+`tests/unit/infra/i18n.test.ts` scans the source for key references and asserts
+each one resolves, so run it rather than trusting a grep.
 
 ### Virtual scrolling is required
 
