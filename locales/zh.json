@@ -1,51 +1,9 @@
 {
-  "menu": {
-    "title": "zip-tui",
-    "browser": "浏览器（新）",
-    "create": "压缩文件",
-    "extract": "解压文件",
-    "view": "查看压缩包",
-    "deps": "依赖管理",
-    "settings": "设置",
-    "quit": "退出"
-  },
   "common": {
     "back": "返回",
     "next": "下一步",
-    "confirm": "确认",
     "cancel": "取消",
-    "copy": "复制",
     "run": "执行"
-  },
-  "view": {
-    "loading": "正在读取归档...",
-    "empty": "归档为空",
-    "failed": "读取失败",
-    "itemCount": "{{total}} 项, 显示 {{shown}}",
-    "hintTree": "↑↓ 移动 · →← 展开/折叠 · Enter 切换 · - 折叠父级 · E/C 全展开/折叠 · s 排序 · t 列表 · Esc 返回",
-    "hintFlat": "↑↓ 移动 · PgUp/PgDn 翻页 · g/G 首尾 · s 排序 · t 树形 · Esc 返回",
-    "detailEmpty": "未选中条目",
-    "detailChildren": "{{count}} 项"
-  },
-  "picker": {
-    "openFile": "选择文件",
-    "openDir": "选择文件夹",
-    "saveFile": "保存为",
-    "multiSelect": "选择要压缩的内容",
-    "selectedTitle": "已选 ({{count}})",
-    "selectedEmpty": "用 Space 添加要压缩的内容",
-    "browseTitle": "浏览",
-    "filename": "文件名",
-    "filterOn": "仅显示归档文件",
-    "filterOff": "显示全部文件",
-    "errorEmptyFilename": "文件名不能为空",
-    "errorEmptySelection": "至少选择一项",
-    "singleInputHint": "仅可选 1 个文件",
-    "itemCount": "{{total}} 项, 显示 {{shown}}",
-    "hintBrowse": "Enter/→ 进入 · ← 返回 · Space 选择 · ~/. 跳转 · h 隐藏 · * 过滤 · Esc 取消",
-    "hintMulti": "Enter/→ 进入 · ← 返回 · Space 选择 · Tab 切到已选区 · Esc 取消",
-    "hintSelected": "Enter 提交 · Space/d 移除 · Tab 返回浏览 · Esc 取消",
-    "hintSave": "Enter/→ 进入 · ← 返回 · ~/. 跳转 · h 隐藏 · * 过滤 · Tab 文件名 · Esc 取消"
   },
   "browser": {
     "loading": "正在读取包内容...",
@@ -79,12 +37,7 @@
     "fieldTarget": "目标",
     "fieldScope": "范围",
     "scopeAll": "全部",
-    "scopeSelected": "选中 {{count}} 项",
-    "browse": "浏览",
-    "testing": "正在测试...",
-    "testOk": "完整性检查通过",
-    "testFailed": "完整性检查未通过",
-    "overwriteWarn": "目标已存在，继续将覆盖其中同名文件"
+    "scopeSelected": "选中 {{count}} 项"
   },
   "help": {
     "title": "快捷键",

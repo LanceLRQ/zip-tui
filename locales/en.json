@@ -1,51 +1,9 @@
 {
-  "menu": {
-    "title": "zip-tui",
-    "browser": "Browser (new)",
-    "create": "Compress",
-    "extract": "Extract",
-    "view": "View archive",
-    "deps": "Dependencies",
-    "settings": "Settings",
-    "quit": "Quit"
-  },
   "common": {
     "back": "Back",
     "next": "Next",
-    "confirm": "Confirm",
     "cancel": "Cancel",
-    "copy": "Copy",
     "run": "Run"
-  },
-  "view": {
-    "loading": "Reading archive...",
-    "empty": "Archive is empty",
-    "failed": "Failed to read",
-    "itemCount": "{{total}} items, showing {{shown}}",
-    "hintTree": "↑↓ move · →← open/close · Enter toggle · - close parent · E/C all · s sort · t list · Esc back",
-    "hintFlat": "↑↓ move · PgUp/PgDn page · g/G ends · s sort · t tree · Esc back",
-    "detailEmpty": "No entry selected",
-    "detailChildren": "{{count}} items"
-  },
-  "picker": {
-    "openFile": "Open file",
-    "openDir": "Open folder",
-    "saveFile": "Save as",
-    "multiSelect": "Choose what to compress",
-    "selectedTitle": "Selected ({{count}})",
-    "selectedEmpty": "Press Space to add items to compress",
-    "browseTitle": "Browse",
-    "filename": "Filename",
-    "filterOn": "archives only",
-    "filterOff": "all files",
-    "errorEmptyFilename": "Filename cannot be empty",
-    "errorEmptySelection": "Select at least one item",
-    "singleInputHint": "single file only",
-    "itemCount": "{{total}} items, showing {{shown}}",
-    "hintBrowse": "Enter/→ open · ← up · Space select · ~/. jump · h hidden · * filter · Esc cancel",
-    "hintMulti": "Enter/→ open · ← up · Space select · Tab to selected · Esc cancel",
-    "hintSelected": "Enter submit · Space/d remove · Tab back to browse · Esc cancel",
-    "hintSave": "Enter/→ open · ← up · ~/. jump · h hidden · * filter · Tab filename · Esc cancel"
   },
   "browser": {
     "loading": "Reading archive...",
@@ -79,12 +37,7 @@
     "fieldTarget": "Target",
     "fieldScope": "Scope",
     "scopeAll": "Everything",
-    "scopeSelected": "{{count}} marked",
-    "browse": "Browse",
-    "testing": "Testing...",
-    "testOk": "Integrity check passed",
-    "testFailed": "Integrity check failed",
-    "overwriteWarn": "Target exists; continuing will overwrite files of the same name"
+    "scopeSelected": "{{count}} marked"
   },
   "help": {
     "title": "Keys",
