@@ -30,15 +30,15 @@ export function parseArgs(argv: string[]): ParsedArgs {
     .option('--lang <lang>', 'temporary UI language (zh|en)');
 
   program
-    .command('a <archive> [inputs...]')
+    .command('a [archive] [inputs...]')
     .description('compress (add)')
     .option('-l, --level <n>', 'compression level 1-9', (v) => Number.parseInt(v, 10))
     .option('-e, --exclude <pattern...>', 'glob exclude')
     .option('-p, --password <pass>', 'password (visible in ps)')
     .option('-P, --prompt-password', 'prompt for password interactively')
-    .action((archive: string, inputs: string[], opts) => {
+    .action((archive: string | undefined, inputs: string[], opts) => {
       result.subcommand = 'a';
-      result.archive = archive;
+      if (archive !== undefined) result.archive = archive;
       result.inputs = inputs;
       if (opts.level !== undefined) result.level = opts.level;
       if (opts.exclude) result.excludes = opts.exclude;
@@ -47,16 +47,16 @@ export function parseArgs(argv: string[]): ParsedArgs {
     });
 
   program
-    .command('x <archive>')
+    .command('x [archive]')
     .description('extract')
     .option('-o, --output <dir>', 'output directory')
     .option('-p, --password <pass>', 'password')
     .option('-P, --prompt-password', 'prompt for password')
     .option('--encoding <name>', 'filename encoding (gbk|shift_jis|cp437)')
     .option('--overwrite <mode>', 'ask|force|skip|rename')
-    .action((archive: string, opts) => {
+    .action((archive: string | undefined, opts) => {
       result.subcommand = 'x';
-      result.archive = archive;
+      if (archive !== undefined) result.archive = archive;
       if (opts.output) result.outputDir = opts.output;
       if (opts.password) result.password = opts.password;
       if (opts.promptPassword) result.promptPassword = true;
@@ -65,11 +65,11 @@ export function parseArgs(argv: string[]): ParsedArgs {
     });
 
   program
-    .command('l <archive>')
+    .command('l [archive]')
     .description('list archive contents')
-    .action((archive: string) => {
+    .action((archive: string | undefined) => {
       result.subcommand = 'l';
-      result.archive = archive;
+      if (archive !== undefined) result.archive = archive;
     });
 
   program

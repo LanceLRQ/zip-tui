@@ -41,4 +41,27 @@ describe('cli direct mode', () => {
     expect(r.exitCode).toBe(0);
     expect(r.stdout).toContain('unzip');
   });
+
+  /**
+   * The archive argument is declared optional so a bare subcommand reaches our
+   * own handling. Declared required, commander exits 1 from inside the
+   * subcommand before control returns here, which both hides the real message
+   * and makes `zt a` on a terminal unable to open the browser at all.
+   */
+  describe.each([
+    ['a', 'missing archive or input files'],
+    ['x', 'missing archive'],
+    ['l', 'missing archive'],
+  ])('bare %s', (sub, message) => {
+    it('reports what is missing and exits 2 rather than 1', async () => {
+      const r = await execa('bun', ['run', ENTRY, sub], {
+        reject: false,
+        env: { ...process.env, ZT_NO_TUI: '1' },
+      });
+      expect(r.exitCode).toBe(2);
+      expect(r.stderr).toContain(message);
+      // commander's own wording would mean it never reached us
+      expect(r.stderr).not.toContain('required argument');
+    });
+  });
 });
