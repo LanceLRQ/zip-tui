@@ -74,12 +74,15 @@ import { useTerminalRows } from '../hooks/useTerminalRows.js';
 export const CHROME_ROWS = 10;
 
 // what the action panel spends on things that are not the command preview:
-// the border (2), the title (1), three fields (3), a warning and an error line
-// (2), the gap the preview's own border adds (1), and the control hint (1).
+// the app's padding (2), the panel border (2), the title (1), three fields (3),
+// a warning and an error line (2), and the control hint (1).
+//
+// The preview's own border is deliberately absent: it sits inside the box this
+// budget sizes, so it comes out of the preview's share, not out of the chrome.
+//
 // The preview is clipped to whatever is left, because the control hint is what
-// would otherwise fall off a short terminal — and a panel with no visible way
-// out traps the user.
-export const PANEL_CHROME = 10;
+// would otherwise be lost — and a panel with no visible way out traps the user.
+export const PANEL_CHROME = 11;
 
 type Overlay = 'none' | 'selection' | 'help' | 'compress' | 'extract' | 'running';
 

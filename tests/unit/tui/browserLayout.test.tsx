@@ -110,7 +110,13 @@ function browserFrame(rows: number): string {
   );
 }
 
-// a long input list is what pushed the panel to 29 rows on a 24-row terminal
+// A long input list is what pushed the panel past the terminal in the first
+// place. The count is measured, not guessed: at this stdout width twenty inputs
+// wrap to only nine preview lines and fit a 24-row terminal either way, so the
+// budget assertions below would pass without a budget at all. Sixty inputs
+// overflow it, which is what gives them teeth.
+const PANEL_INPUTS = 60;
+
 const LONG_COMMAND: BuiltCommand = {
   cmd: '7z',
   args: [
@@ -118,7 +124,7 @@ const LONG_COMMAND: BuiltCommand = {
     '-t7z',
     '-mx=6',
     '/w/proj/out.7z',
-    ...Array.from({ length: 20 }, (_, i) => `/w/proj/src/module-${i}/index.ts`),
+    ...Array.from({ length: PANEL_INPUTS }, (_, i) => `/w/proj/src/module-${i}/index.ts`),
   ],
 };
 
@@ -187,19 +193,28 @@ describe('ActionPanel height budget', () => {
    * A panel with no visible way out traps the user, so the preview is what gets
    * clipped, never the controls.
    *
-   * Measured caveat: at this stdout width the 20-input command above wraps to
-   * nine preview lines, making the whole panel 20 rows — it fits a 24-row
-   * terminal, so dropping `previewRows` changes nothing and these two
-   * assertions currently hold either way. They start discriminating once the
-   * preview exceeds roughly 13 wrapped lines (about 40 inputs at 100 columns):
-   * without a budget the fields and the hint are then overwritten by command
-   * text. Treat this case as pinning the panel's shape, not as proof that the
-   * clipping works.
+   * The assertions name the field labels, which is where the damage actually
+   * shows. Omitting `previewRows` at this input count squeezes the format and
+   * output rows out of the frame entirely, while the hint line survives as
+   * overwritten text — the command runs over it, but the substring "Esc" is
+   * still there. Asserting on the hint alone would sail straight past the very
+   * failure this exists to catch.
+   *
+   * Measured, not assumed: with the budget passed all four hold at every
+   * height; with it omitted the two field labels are gone at 24 rows. Overflow
+   * shows up as squeezed rows rather than extra ones, because the fixed-height
+   * box leaves Yoga no room to spill into.
    */
-  it('keeps the control hint on screen at every height', () => {
+  it('keeps every control on screen at every height', () => {
     for (const rows of [24, 40, 60]) {
       const frame = panelFrame(rows, Math.max(2, rows - PANEL_CHROME));
-      expect(frame, `control hint pushed off a ${rows}-row terminal`).toContain('Esc');
+      expect(frame, `format field squeezed out on a ${rows}-row terminal`).toContain(
+        t('action.fieldFormat'),
+      );
+      expect(frame, `output field squeezed out on a ${rows}-row terminal`).toContain(
+        t('action.fieldOutput'),
+      );
+      expect(frame, `control hint lost on a ${rows}-row terminal`).toContain('Esc');
       expect(frame, `command preview missing on a ${rows}-row terminal`).toContain('7z');
     }
   });
