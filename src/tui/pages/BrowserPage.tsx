@@ -292,6 +292,10 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
         if (ev.type === 'stderr') execution.appendStderr(ev.data ?? '');
         if (ev.type === 'exit') {
           execution.finish(ev.exitCode ?? -1);
+          // the process is gone, so nothing is left to cancel. Holding the
+          // handle would make the unmount cleanup below signal a dead pid and
+          // then sit on the executor's five-second SIGKILL timer for nothing.
+          runHandle.current = null;
           // even a failed run can leave partial output behind, so refresh
           // regardless of the exit code
           setRefreshToken((n) => n + 1);
