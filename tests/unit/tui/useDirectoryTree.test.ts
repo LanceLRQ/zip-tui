@@ -32,4 +32,18 @@ describe('listDirectoryAsNodes', () => {
     const nodes = listDirectoryAsNodes(tmp, { depth: 0, showHidden: true });
     expect(nodes.some((n) => n.label === '.hidden')).toBe(true);
   });
+
+  // the browser's row order is built on this: directories first, then files,
+  // each group alphabetical. The names below are chosen so plain alphabetical
+  // ordering would interleave them, which is what makes the grouping visible
+  it('puts directories before files, each group alphabetical', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'zt-dl-'));
+    fs.writeFileSync(path.join(tmp, 'apple.txt'), 'hi');
+    fs.mkdirSync(path.join(tmp, 'banana'));
+    fs.writeFileSync(path.join(tmp, 'cherry.txt'), 'hi');
+    fs.mkdirSync(path.join(tmp, 'date'));
+
+    const nodes = listDirectoryAsNodes(tmp, { depth: 0, showHidden: false });
+    expect(nodes.map((n) => n.label)).toEqual(['banana', 'date', 'apple.txt', 'cherry.txt']);
+  });
 });
