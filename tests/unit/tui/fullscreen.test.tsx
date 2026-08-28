@@ -2,10 +2,10 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { render } from 'ink';
+import { Box, render } from 'ink';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { initI18n } from '../../../src/infra/i18n';
-import { FilePicker } from '../../../src/tui/components/FilePicker';
+import { BrowserPage } from '../../../src/tui/pages/BrowserPage';
 
 /**
  * ink-testing-library's stdout stub hard-codes `columns` and has no `rows`, so
@@ -49,7 +49,11 @@ class InertStdin extends EventEmitter {
 function frameAtHeight(rows: number, dir: string): string {
   const stdout = new SizedStdout(rows);
   const instance = render(
-    <FilePicker mode="openFile" initialPath={dir} onConfirm={() => {}} onCancel={() => {}} />,
+    // BrowserPage relies on App for the outer frame, so the wrapper has to be
+    // reproduced here or the page has nothing to size itself against
+    <Box flexDirection="column" padding={1} height={rows}>
+      <BrowserPage initialDir={dir} />
+    </Box>,
     {
       stdout: stdout as unknown as NodeJS.WriteStream,
       stdin: new InertStdin() as unknown as NodeJS.ReadStream,
@@ -66,6 +70,15 @@ function frameAtHeight(rows: number, dir: string): string {
 function shownCount(frame: string): number {
   const m = frame.match(/显示\s*(\d+)/);
   return m ? Number.parseInt(m[1] ?? '0', 10) : -1;
+}
+
+/**
+ * Count entry rows by their `[ ]` / `[x]` marker. Below a certain height the
+ * outer fixed-height Box clips the count line away, so the marker is the only
+ * evidence left that the list itself still rendered.
+ */
+function listedRows(frame: string): number {
+  return frame.split('\n').filter((line) => /\[[ x]\]/.test(line)).length;
 }
 
 describe('terminal height drives list size', () => {
@@ -99,6 +112,6 @@ describe('terminal height drives list size', () => {
   });
 
   it('still renders a usable list when the terminal is shorter than the chrome', () => {
-    expect(shownCount(frameAtHeight(6, tmp))).toBeGreaterThan(0);
+    expect(listedRows(frameAtHeight(6, tmp))).toBeGreaterThan(0);
   });
 });

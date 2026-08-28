@@ -2,46 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { useAppStore } from '../../../src/store';
 
 describe('app store', () => {
-  it('initializes with menu route', () => {
-    useAppStore.getState().setRoute('menu');
-    expect(useAppStore.getState().route).toBe('menu');
+  it('initializes with the browser route', () => {
+    expect(useAppStore.getState().route).toBe('browser');
   });
 
   it('changes route via setRoute', () => {
-    useAppStore.getState().setRoute('createWizard');
-    expect(useAppStore.getState().route).toBe('createWizard');
-  });
-
-  it('wizard step progresses', () => {
-    const s = useAppStore.getState();
-    s.wizard.reset();
-    s.wizard.next();
-    expect(useAppStore.getState().wizard.step).toBe(1);
-  });
-
-  it('wizard prev clamps at zero', () => {
-    const s = useAppStore.getState();
-    s.wizard.reset();
-    s.wizard.prev();
-    expect(useAppStore.getState().wizard.step).toBe(0);
-  });
-
-  it('wizard setters mutate state', () => {
-    const s = useAppStore.getState();
-    s.wizard.reset();
-    s.wizard.setArchive('out.zip');
-    s.wizard.setInputs(['a', 'b']);
-    s.wizard.setFormat('zip');
-    s.wizard.setLevel(9);
-    s.wizard.setExcludes(['node_modules/*']);
-    s.wizard.setPassword('p@ss');
-    const w = useAppStore.getState().wizard;
-    expect(w.archive).toBe('out.zip');
-    expect(w.inputs).toEqual(['a', 'b']);
-    expect(w.format).toBe('zip');
-    expect(w.level).toBe(9);
-    expect(w.excludes).toEqual(['node_modules/*']);
-    expect(w.password).toBe('p@ss');
+    useAppStore.getState().setRoute('deps');
+    expect(useAppStore.getState().route).toBe('deps');
+    useAppStore.getState().setRoute('settings');
+    expect(useAppStore.getState().route).toBe('settings');
+    useAppStore.getState().setRoute('browser');
+    expect(useAppStore.getState().route).toBe('browser');
   });
 
   it('deps.setStatus replaces tool status list', () => {

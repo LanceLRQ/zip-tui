@@ -10,7 +10,7 @@ export const SettingsPage: React.FC = () => {
   const config = getConfig();
 
   useInput((_input, key) => {
-    if (key.escape) setRoute('menu');
+    if (key.escape) setRoute('browser');
   });
 
   return (

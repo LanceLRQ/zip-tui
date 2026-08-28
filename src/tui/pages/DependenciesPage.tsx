@@ -6,7 +6,7 @@ export const DependenciesPage: React.FC = () => {
   const status = useAppStore((s) => s.deps.status);
   const setRoute = useAppStore((s) => s.setRoute);
   useInput((_input, key) => {
-    if (key.escape) setRoute('menu');
+    if (key.escape) setRoute('browser');
   });
 
   return (
