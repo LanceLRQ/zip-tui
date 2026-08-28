@@ -79,7 +79,7 @@ export const CHROME_ROWS = 10;
 // The preview is clipped to whatever is left, because the control hint is what
 // would otherwise fall off a short terminal — and a panel with no visible way
 // out traps the user.
-const PANEL_CHROME = 10;
+export const PANEL_CHROME = 10;
 
 type Overlay = 'none' | 'selection' | 'help' | 'compress' | 'extract' | 'running';
 
