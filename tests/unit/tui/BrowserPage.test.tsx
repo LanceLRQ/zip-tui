@@ -262,3 +262,58 @@ describe('BrowserPage extraction', () => {
     expect(lineWith(out, '目标')).not.toContain('wrapped');
   });
 });
+
+describe('BrowserPage refresh after its own run', () => {
+  // same wait the extraction cases use for work that leaves the render loop
+  const settle = () => new Promise((r) => setTimeout(r, 400));
+
+  /**
+   * Waits for a real subprocess to put a file on disk.
+   *
+   * Bounded rather than open-ended so a tool that never produces the file
+   * fails the assertion below instead of hanging the suite.
+   */
+  const waitForFile = async (file: string): Promise<void> => {
+    for (let i = 0; i < 100 && !fs.existsSync(file); i += 1) {
+      await flush();
+    }
+  };
+
+  // the whole point of running a command from the browser is seeing its result;
+  // the row list is memoised on state that a child process writing to disk
+  // cannot touch, so nothing but an explicit refresh can surface the new file
+  it('lists the archive it just created', async () => {
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), 'zt-refresh-'));
+    fs.writeFileSync(path.join(work, 'payload.txt'), 'payload');
+    const archive = path.join(work, 'payload.zip');
+    try {
+      const { lastFrame, stdin } = render(<BrowserPage initialDir={work} />);
+      await settle();
+      expect(lastFrame() ?? '').toContain('payload.txt');
+      expect(lastFrame() ?? '').not.toContain('payload.zip');
+
+      stdin.write(' '); // mark payload.txt, the only content row
+      await flush();
+      stdin.write('a'); // open the compress panel
+      await flush();
+      stdin.write('\x1b[D'); // left, 7z -> zip
+      await flush();
+      // the panel names the file the run is about to produce
+      expect(lastFrame() ?? '').toContain('payload.zip');
+
+      stdin.write('\r'); // run zip for real
+      await waitForFile(archive);
+      await settle();
+      expect(fs.existsSync(archive)).toBe(true);
+
+      stdin.write('\x1b'); // Esc, back to the listing
+      await flush();
+      expect(lastFrame() ?? '').toContain('payload.zip');
+    } finally {
+      fs.rmSync(work, { recursive: true, force: true });
+    }
+    // every BrowserPage rendered earlier in this file is still mounted and
+    // subscribed to the execution store, so a real run re-renders all of them
+    // on each process event — far slower here than the same run in isolation
+  }, 30_000);
+});

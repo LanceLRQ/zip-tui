@@ -123,6 +123,15 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
   const [startedAt, setStartedAt] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
   const runHandle = useRef<StreamHandle | null>(null);
+  /**
+   * Bumped whenever a command finishes, so the directory is read again.
+   *
+   * Nothing else in the row memo's dependencies changes when a child process
+   * writes to disk, so without this the browser keeps showing the listing from
+   * before its own action ran — you extract an archive and the new folder is
+   * simply not there.
+   */
+  const [refreshToken, setRefreshToken] = useState(0);
   /** Row to land on once the listing for a new location has rendered. */
   const [pendingFocus, setPendingFocus] = useState<string | null>(null);
   /** Location the cursor has already been placed for. */
@@ -140,6 +149,9 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
   );
 
   const nodes = useMemo<readonly BrowserRow[]>(() => {
+    // read only to re-run this after a command writes to disk; the listing
+    // below is not otherwise reactive to the filesystem
+    void refreshToken;
     if (location.kind === 'fs') {
       let raw: ReturnType<typeof listDirectoryAsNodes>;
       try {
@@ -155,7 +167,7 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
     }
     // C3: no sortRows here — the tree was already built in the chosen order
     return archiveRows(tree, location.innerDir, true);
-  }, [location, showHidden, tree, treeView, expanded, sortBy]);
+  }, [location, showHidden, tree, treeView, expanded, sortBy, refreshToken]);
 
   const total = nodes.length;
   const safeCursor = Math.min(cursor, Math.max(0, total - 1));
@@ -187,6 +199,14 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
     const id = setInterval(() => setElapsedMs(Date.now() - startedAt), 100);
     return () => clearInterval(id);
   }, [execution.state, startedAt]);
+
+  // a child process outlives the page unless it is told not to; quitting the
+  // app mid-run would otherwise leave it running with nothing reading it
+  useEffect(() => {
+    return () => {
+      void runHandle.current?.cancel();
+    };
+  }, []);
 
   useEffect(() => {
     if (pendingFocus === null) return;
@@ -270,7 +290,12 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
     void (async () => {
       for await (const ev of handle.events) {
         if (ev.type === 'stderr') execution.appendStderr(ev.data ?? '');
-        if (ev.type === 'exit') execution.finish(ev.exitCode ?? -1);
+        if (ev.type === 'exit') {
+          execution.finish(ev.exitCode ?? -1);
+          // even a failed run can leave partial output behind, so refresh
+          // regardless of the exit code
+          setRefreshToken((n) => n + 1);
+        }
       }
     })();
   };
