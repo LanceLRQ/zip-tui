@@ -317,3 +317,28 @@ describe('BrowserPage refresh after its own run', () => {
     // on each process event — far slower here than the same run in isolation
   }, 30_000);
 });
+
+describe('BrowserPage detail bar', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 400));
+
+  /**
+   * The old dedicated viewer showed this and the browser replaced it, so
+   * dropping it would be a quiet loss rather than a deliberate simplification.
+   *
+   * Asserted with the trailing separator: the detail bar joins its parts with
+   * " · ", while the item-count line above reads "N 项, 显示 M" with a comma.
+   * Matching the bare count would not tell the two apart.
+   */
+  it('reports how many entries an archive directory holds', async () => {
+    const { lastFrame } = render(<BrowserPage initialArchive={path.join(dir, 'wrapped.zip')} />);
+    await settle();
+    expect(lastFrame() ?? '').toContain('1 项 · ');
+  });
+
+  // counting these would mean reading every subdirectory during a render
+  it('claims no child count for a filesystem directory', async () => {
+    const { lastFrame } = render(<BrowserPage initialDir={dir} />);
+    await settle();
+    expect(lastFrame() ?? '').not.toContain('项 · ');
+  });
+});

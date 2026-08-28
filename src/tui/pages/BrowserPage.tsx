@@ -242,6 +242,26 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
     return map;
   }, [listing]);
 
+  /**
+   * How many entries each archive directory holds directly.
+   *
+   * Only archives: the whole listing is already in memory, so counting is free.
+   * The filesystem side deliberately has no equivalent — `listDirectoryAsNodes`
+   * does not recurse, and reading every subdirectory to label one detail line
+   * would block the render on a large tree.
+   */
+  const childCountByPath = useMemo(() => {
+    const map = new Map<string, number>();
+    const walk = (branch: readonly { path: string; children: readonly unknown[] }[]): void => {
+      for (const n of branch) {
+        map.set(n.path, n.children.length);
+        walk(n.children as typeof branch);
+      }
+    };
+    walk(tree);
+    return map;
+  }, [tree]);
+
   // C2: the parent row's real action is stepping out, so it gets no cursor
   // context — offering "enter" for it would mislabel the hint line
   const actions = availableActions({
@@ -704,6 +724,9 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
 
   const marked = count(selection);
   const focusedEntry = focused ? entryByPath.get(focused.id) : undefined;
+  // the parent row stands for a location, not an entry, so it gets no count
+  const focusedChildren =
+    focused?.isDir && !onParentRow ? childCountByPath.get(focused.id) : undefined;
 
   const hintParts = [
     onParentRow ? t('browser.parentHint') : '',
@@ -750,6 +773,12 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
           modified={focusedEntry?.modified}
           modifiedText={focusedEntry?.modifiedText}
           linkTarget={focusedEntry?.linkTarget}
+          childCount={focusedChildren}
+          childCountLabel={
+            focusedChildren === undefined
+              ? undefined
+              : t('browser.detailChildren', { count: focusedChildren })
+          }
           emptyLabel={t('browser.detailEmpty')}
         />
       </Box>
