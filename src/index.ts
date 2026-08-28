@@ -1,6 +1,6 @@
 import { render } from 'ink';
 import React from 'react';
-import { type ParsedArgs, parseArgs } from './cli/parser.js';
+import { parseArgs } from './cli/parser.js';
 import { detectAll } from './deps/detect.js';
 import { buildDefaultRegistry } from './engine/builder.js';
 import { getConfig } from './infra/config.js';
@@ -13,11 +13,16 @@ import {
   resolveListCommand,
 } from './runner/direct.js';
 
-async function launchTui(_args: ParsedArgs): Promise<number> {
+interface TuiEntry {
+  initialDir?: string;
+  initialArchive?: string;
+}
+
+async function launchTui(entry: TuiEntry = {}): Promise<number> {
   const { App } = await import('./tui/App.js');
   // the alternate screen gives the app the full window and restores whatever
   // the terminal was showing once it exits, the way vim and htop do
-  const instance = render(React.createElement(App), { alternateScreen: true });
+  const instance = render(React.createElement(App, entry), { alternateScreen: true });
   // waiting lets Ink tear down and leave the alternate screen before we return
   await instance.waitUntilExit();
   return 0;
@@ -37,7 +42,7 @@ async function main(): Promise<number> {
         process.stderr.write('zt: missing archive or input files\n');
         return 2;
       }
-      return launchTui(args);
+      return launchTui({ initialDir: process.cwd() });
     }
     const cmd = resolveCreateCommand(registry, {
       archive: args.archive,
@@ -67,6 +72,11 @@ async function main(): Promise<number> {
       process.stderr.write('zt: missing archive\n');
       return 2;
     }
+    // an interactive terminal gets the browser opened inside the package;
+    // scripts and pipes still get the raw listing on stdout
+    if (env.interactive) {
+      return launchTui({ initialArchive: args.archive });
+    }
     const cmd = resolveListCommand(registry, args.archive);
     return executeDirect(cmd, { dryRun: args.dryRun });
   }
@@ -91,7 +101,7 @@ async function main(): Promise<number> {
     process.stderr.write("zt: missing subcommand (try 'zt --help')\n");
     return 2;
   }
-  return launchTui(args);
+  return launchTui({ initialDir: process.cwd() });
 }
 
 main().then((code) => {

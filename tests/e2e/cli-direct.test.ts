@@ -31,4 +31,14 @@ describe('cli direct mode', () => {
     expect(r.exitCode).toBe(2);
     expect(r.stderr).toContain('missing subcommand');
   });
+
+  // scripts and pipes must never get a TUI, whatever the subcommand
+  it('l stays non-interactive and prints the command', async () => {
+    const r = await execa('bun', ['run', ENTRY, 'l', 'out.zip', '--dry-run'], {
+      reject: false,
+      env: { ...process.env, ZT_NO_TUI: '1' },
+    });
+    expect(r.exitCode).toBe(0);
+    expect(r.stdout).toContain('unzip');
+  });
 });
