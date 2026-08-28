@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +17,12 @@ beforeAll(async () => {
   fs.mkdirSync(path.join(dir, 'sub'));
   fs.writeFileSync(path.join(dir, 'sub', 'inner.txt'), 'x');
   fs.writeFileSync(path.join(dir, 'note.txt'), 'hello');
+  // wrapped.zip holds everything under one top-level folder, so extracting it
+  // must not add a second wrapper
+  execFileSync('zip', ['-qr', path.join(dir, 'wrapped.zip'), 'sub'], { cwd: dir });
+  // loose.zip scatters files at the top level, so it does need a folder
+  fs.writeFileSync(path.join(dir, 'other.txt'), 'y');
+  execFileSync('zip', ['-q', path.join(dir, 'loose.zip'), 'note.txt', 'other.txt'], { cwd: dir });
 });
 
 afterAll(() => {
@@ -177,5 +184,81 @@ describe('BrowserPage compress panel', () => {
     stdin.write('ZZ');
     await flush();
     expect(lastFrame() ?? '').toContain('sub.7zZZ');
+  });
+});
+
+describe('BrowserPage extraction', () => {
+  const wrapped = () => path.join(dir, 'wrapped.zip');
+  const loose = () => path.join(dir, 'loose.zip');
+  const settle = () => new Promise((r) => setTimeout(r, 400));
+
+  /** The panel renders each field on its own line; pull the one we mean. */
+  const lineWith = (frame: string, label: string): string =>
+    frame.split('\n').find((l) => l.includes(label)) ?? '';
+
+  it('enters an archive and lists its contents', async () => {
+    const { lastFrame } = render(<BrowserPage initialArchive={wrapped()} />);
+    await settle();
+    const out = lastFrame() ?? '';
+    expect(out).toContain('📦');
+    expect(out).toContain('sub');
+  });
+
+  // the archive already wraps everything in "sub/", so no extra folder
+  it('extracts a wrapped archive beside itself rather than into a new folder', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialArchive={wrapped()} />);
+    await settle();
+    stdin.write('x');
+    await settle();
+    const target = lineWith(lastFrame() ?? '', '目标');
+    expect(target).toContain(dir);
+    expect(target).not.toContain('wrapped');
+  });
+
+  // loose contents would scatter over whatever is already there
+  it('extracts a loose archive into a folder named after it', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialArchive={loose()} />);
+    await settle();
+    stdin.write('x');
+    await settle();
+    expect(lineWith(lastFrame() ?? '', '目标')).toContain(path.join(dir, 'loose'));
+  });
+
+  it('offers the whole archive as the scope when nothing is marked', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialArchive={wrapped()} />);
+    await settle();
+    stdin.write('x');
+    await settle();
+    expect(lineWith(lastFrame() ?? '', '范围')).toContain('全部');
+  });
+
+  it('narrows the scope to the marked entries', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialArchive={wrapped()} />);
+    await settle();
+    stdin.write(' ');
+    await settle();
+    stdin.write('x');
+    await settle();
+    expect(lineWith(lastFrame() ?? '', '范围')).toContain('选中 1 项');
+  });
+
+  // pressing x with the cursor on an archive must open the same panel, not a
+  // blank screen
+  it('opens the extract panel from the filesystem too', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialDir={dir} />);
+    await settle();
+    // directories sort ahead of files and files sort by name, so wrapped.zip is
+    // the last row — jumping to the end is deterministic where counting
+    // keypresses or matching a cursor glyph is not
+    stdin.write('G');
+    await settle();
+    // the detail bar names the highlighted row, which proves where the cursor is
+    expect(lastFrame() ?? '').toContain(wrapped());
+    stdin.write('x');
+    await settle();
+    const out = lastFrame() ?? '';
+    expect(out).toContain('目标');
+    // the same wrapped archive, so the same answer as from inside it
+    expect(lineWith(out, '目标')).not.toContain('wrapped');
   });
 });

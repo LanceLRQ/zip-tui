@@ -1,9 +1,10 @@
 import os from 'node:os';
 import { Box, Text, useApp, useInput } from 'ink';
 import type React from 'react';
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { buildDefaultRegistry } from '../../engine/builder.js';
-import { runCommand } from '../../engine/executor.js';
+import { detectFormatFromExtension } from '../../engine/detector.js';
+import { runCommand, type StreamHandle, streamCommand } from '../../engine/executor.js';
 import {
   type ArchiveEntry,
   type BuiltCommand,
@@ -12,7 +13,7 @@ import {
 } from '../../engine/types.js';
 import { useAppStore } from '../../store/index.js';
 import { type ActionId, availableActions } from '../browser/actions.js';
-import { suggestArchiveName } from '../browser/defaults.js';
+import { defaultExtractDir, suggestArchiveName } from '../browser/defaults.js';
 import { matchesKey } from '../browser/keymap.js';
 import {
   archiveRows,
@@ -57,6 +58,7 @@ import {
 } from '../components/archiveTree.js';
 import { Divider } from '../components/Divider.js';
 import { EntryDetails } from '../components/EntryDetails.js';
+import { ExecutionMonitor } from '../components/ExecutionMonitor.js';
 import { fitPageSize } from '../components/fitPageSize.js';
 import { HELP_ENTRIES, HelpPanel } from '../components/HelpPanel.js';
 import { SelectionPopup } from '../components/SelectionPopup.js';
@@ -79,7 +81,7 @@ export const CHROME_ROWS = 10;
 // out traps the user.
 const PANEL_CHROME = 10;
 
-type Overlay = 'none' | 'selection' | 'help' | 'compress';
+type Overlay = 'none' | 'selection' | 'help' | 'compress' | 'extract' | 'running';
 
 export interface BrowserPageProps {
   /** Where to open; defaults to the working directory. */
@@ -110,6 +112,17 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
   const [level, setLevel] = useState(6);
   const [output, setOutput] = useState('');
   const [panelField, setPanelField] = useState(0);
+  const execution = useAppStore((s) => s.execution);
+  /**
+   * Which archive the extract panel is acting on; set before the panel opens.
+   *
+   * The panel cannot read this off `location`: pressing `x` over an archive on
+   * the filesystem opens it without entering the archive at all.
+   */
+  const [extractTarget, setExtractTarget] = useState('');
+  const [startedAt, setStartedAt] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const runHandle = useRef<StreamHandle | null>(null);
   /** Row to land on once the listing for a new location has rendered. */
   const [pendingFocus, setPendingFocus] = useState<string | null>(null);
   /** Location the cursor has already been placed for. */
@@ -148,6 +161,32 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
   const safeCursor = Math.min(cursor, Math.max(0, total - 1));
   const focused = nodes[safeCursor];
   const onParentRow = focused?.id === PARENT_ID;
+
+  // `initialArchive` lands the browser inside a package without ever going
+  // through openArchive, so nothing would otherwise request its listing and the
+  // view would sit on "loading" forever
+  useEffect(() => {
+    if (initialArchive === undefined) return;
+    let live = true;
+    void loadArchiveListing(initialArchive, buildDefaultRegistry(), runCommand).then((result) => {
+      if (!live) return;
+      setListing(result);
+      // the sort only reorders siblings, and initialExpanded looks solely at
+      // whether there is a single root, so 'default' answers the same question
+      setExpanded(initialExpanded(buildArchiveTree(result.entries, 'default')));
+    });
+    return () => {
+      live = false;
+    };
+  }, [initialArchive]);
+
+  // the monitor renders a running clock, so it needs a reason to re-render
+  // between process events — a quiet command would otherwise sit at 0.0s
+  useEffect(() => {
+    if (execution.state !== 'running') return;
+    const id = setInterval(() => setElapsedMs(Date.now() - startedAt), 100);
+    return () => clearInterval(id);
+  }, [execution.state, startedAt]);
 
   useEffect(() => {
     if (pendingFocus === null) return;
@@ -220,6 +259,22 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
     setCursor(firstContentIndex(nodes));
   };
 
+  /** Hands a built command to the executor and shows the monitor over it. */
+  const run = (cmd: BuiltCommand): void => {
+    execution.start();
+    setStartedAt(Date.now());
+    setElapsedMs(0);
+    setOverlay('running');
+    const handle = streamCommand(cmd);
+    runHandle.current = handle;
+    void (async () => {
+      for await (const ev of handle.events) {
+        if (ev.type === 'stderr') execution.appendStderr(ev.data ?? '');
+        if (ev.type === 'exit') execution.finish(ev.exitCode ?? -1);
+      }
+    })();
+  };
+
   /** C1: contextual actions are dispatched by id, never re-derived from flags. */
   const dispatch = (id: ActionId): void => {
     switch (id) {
@@ -246,10 +301,40 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
         setOverlay('compress');
         return;
       }
-      case 'extract':
-      case 'test':
-        // wired in Task 14; the binding is proven here
+      case 'extract': {
+        if (location.kind === 'archive') {
+          setExtractTarget(location.archivePath);
+          setOutput(defaultExtractDir(location.archivePath, tree));
+          setPanelField(0);
+          setOverlay('extract');
+          return;
+        }
+        if (!focused?.isArchive) return;
+        // where it should land depends on what is inside, and `tree` here
+        // describes the filesystem location rather than this package, so the
+        // listing has to run before the panel can show a target
+        const archivePath = focused.id;
+        void (async () => {
+          const res = await loadArchiveListing(archivePath, buildDefaultRegistry(), runCommand);
+          const built = buildArchiveTree(res.entries, sortBy);
+          setExtractTarget(archivePath);
+          setOutput(defaultExtractDir(archivePath, built));
+          setPanelField(0);
+          setOverlay('extract');
+        })();
         return;
+      }
+      case 'test': {
+        const target = location.kind === 'archive' ? location.archivePath : focused?.id;
+        if (!target) return;
+        const fmt = detectFormatFromExtension(target);
+        if (!fmt) return;
+        const cmd = buildDefaultRegistry().get(fmt).buildTest(target);
+        // some formats have no integrity check of their own
+        if (!cmd) return;
+        run(cmd);
+        return;
+      }
       default:
         return;
     }
@@ -258,10 +343,35 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
   useInput(
     (input, key) => {
       if (key.escape) {
+        // a running child process would otherwise keep going with no way back
+        if (overlay === 'running' && execution.state === 'running') {
+          void runHandle.current?.cancel();
+          execution.cancel();
+          return;
+        }
         setOverlay('none');
         return;
       }
+      // nothing but the way out is meaningful while a command is in flight
+      if (overlay === 'running') return;
       if (overlay === 'compress') {
+        if (key.return) {
+          try {
+            run(
+              buildDefaultRegistry()
+                .get(format)
+                .buildCreate({
+                  archive: output,
+                  inputs: paths(selection),
+                  level,
+                }),
+            );
+          } catch {
+            // the panel already shows why this format cannot take the
+            // selection; refusing to run is the whole response
+          }
+          return;
+        }
         if (key.tab) {
           setPanelField((f) => (f + 1) % 3);
           return;
@@ -293,6 +403,35 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
           }
           if (input !== '' && !key.ctrl && !key.meta) setOutput((o) => o + input);
           return;
+        }
+        return;
+      }
+      if (overlay === 'extract') {
+        if (key.tab) {
+          setPanelField((f) => (f + 1) % 2);
+          return;
+        }
+        if (key.return) {
+          const fmt = detectFormatFromExtension(extractTarget);
+          if (!fmt) return;
+          const files = location.kind === 'archive' ? paths(selection) : [];
+          run(
+            buildDefaultRegistry()
+              .get(fmt)
+              .buildExtract({
+                archive: extractTarget,
+                outputDir: output,
+                ...(files.length > 0 ? { files } : {}),
+              }),
+          );
+          return;
+        }
+        if (panelField === 1) {
+          if (key.backspace || key.delete) {
+            setOutput((o) => o.slice(0, -1));
+            return;
+          }
+          if (input !== '' && !key.ctrl && !key.meta) setOutput((o) => o + input);
         }
         return;
       }
@@ -467,6 +606,60 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
         previewRows={Math.max(2, rows - PANEL_CHROME)}
         error={buildError}
       />
+    );
+  }
+
+  // C-fix: keyed on the archive the panel was opened for, not on the current
+  // location — pressing `x` over an archive on the filesystem opens this panel
+  // while location.kind is still 'fs', and gating on that rendered a blank
+  // screen with no visible way out
+  if (overlay === 'extract' && extractTarget !== '') {
+    const fmt = detectFormatFromExtension(extractTarget);
+    const adapter = fmt ? buildDefaultRegistry().get(fmt) : null;
+    if (!adapter) {
+      return (
+        <Text color="red">
+          {t('browser.failed')}: {extractTarget}
+        </Text>
+      );
+    }
+    // the marked set is per-location: inside the archive it names entries to
+    // pull out, but on the filesystem it holds absolute paths of compression
+    // material and has nothing to do with this archive
+    const files = location.kind === 'archive' ? paths(selection) : [];
+    return (
+      <ActionPanel
+        kind="extract"
+        title={t('action.extractTitle', { archive: extractTarget })}
+        output={output}
+        scopeLabel={
+          files.length > 0
+            ? t('action.scopeSelected', { count: files.length })
+            : t('action.scopeAll')
+        }
+        focusField={panelField}
+        command={adapter.buildExtract({
+          archive: extractTarget,
+          outputDir: output,
+          ...(files.length > 0 ? { files } : {}),
+        })}
+        previewRows={Math.max(2, rows - PANEL_CHROME)}
+      />
+    );
+  }
+
+  if (overlay === 'running') {
+    const done = execution.state !== 'running';
+    return (
+      <Box flexDirection="column">
+        <ExecutionMonitor
+          state={execution.state}
+          progress={execution.progress}
+          stderrTail={execution.stderr}
+          elapsedMs={elapsedMs}
+        />
+        <Text dimColor>Esc {done ? t('common.back') : t('common.cancel')}</Text>
+      </Box>
     );
   }
 
