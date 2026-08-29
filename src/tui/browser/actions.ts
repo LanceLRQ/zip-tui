@@ -35,6 +35,11 @@ export interface ActionContext {
   cursor: CursorInfo | null;
   /** Marked rows in the domain belonging to `location.kind`. */
   selectionCount: number;
+  /**
+   * True when a package is shown as one whole-tree listing instead of a single
+   * directory. Meaningless on the filesystem, which has no such view.
+   */
+  treeView?: boolean;
 }
 
 /**
@@ -92,7 +97,23 @@ function filesystemActions(ctx: ActionContext): Action[] {
 }
 
 function archiveActions(ctx: ActionContext): Action[] {
-  const extract: Action =
+  const out: Action[] = [];
+
+  /*
+   * A directory inside a package descends like any other, which is what
+   * `Location.innerDir` is for. Only directories: a package nested inside
+   * another has to be unpacked before it can be opened, so its row behaves
+   * like a file.
+   *
+   * The tree view is excluded because its rows are the whole package at once
+   * rather than one level. Descending there would move the address while the
+   * listing stayed put, which reads as nothing having happened.
+   */
+  if (!ctx.treeView && ctx.cursor?.isDir) {
+    out.push({ id: 'enter', key: 'Enter', labelKey: 'action.enter' });
+  }
+
+  out.push(
     ctx.selectionCount > 0
       ? {
           id: 'extract',
@@ -100,10 +121,18 @@ function archiveActions(ctx: ActionContext): Action[] {
           labelKey: 'action.extractSelected',
           labelCount: ctx.selectionCount,
         }
-      : { id: 'extract', key: 'x', labelKey: 'action.extractAll' };
-  return [
-    extract,
-    { id: 'test', key: 't', labelKey: 'action.test' },
-    { id: 'leave', key: '←', labelKey: 'action.leaveArchive' },
-  ];
+      : { id: 'extract', key: 'x', labelKey: 'action.extractAll' },
+  );
+  out.push({ id: 'test', key: 't', labelKey: 'action.test' });
+
+  // one key, two destinations: at the root it leaves the package, below it goes
+  // up a level. The label has to say which, or it misdescribes half its uses.
+  const atRoot = ctx.location.kind === 'archive' && ctx.location.innerDir === '';
+  out.push({
+    id: 'leave',
+    key: '←',
+    labelKey: atRoot ? 'action.leaveArchive' : 'action.leaveLevel',
+  });
+
+  return out;
 }

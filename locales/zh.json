@@ -29,6 +29,7 @@
     "extractSelected": "解压选中({{count}})",
     "test": "测试",
     "leaveArchive": "退出包",
+    "leaveLevel": "上一级",
     "compressTitle": "压缩 {{count}} 项",
     "extractTitle": "解压 {{archive}}",
     "fieldFormat": "格式",

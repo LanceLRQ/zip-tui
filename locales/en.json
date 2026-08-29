@@ -29,6 +29,7 @@
     "extractSelected": "Extract marked ({{count}})",
     "test": "Test",
     "leaveArchive": "Leave archive",
+    "leaveLevel": "Up one level",
     "compressTitle": "Compress {{count}} items",
     "extractTitle": "Extract {{archive}}",
     "fieldFormat": "Format",

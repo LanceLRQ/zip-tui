@@ -263,6 +263,70 @@ describe('BrowserPage extraction', () => {
   });
 });
 
+/**
+ * Browsing a package one directory at a time.
+ *
+ * The unit cases in `browser/actions.test.ts` pin the key down; these prove it
+ * reaches the listing. Both are needed — `availableActions` could offer `enter`
+ * while `dispatch` ignored it, or the address could move while the rows stayed
+ * put, and either would look correct from one side alone.
+ */
+describe('BrowserPage inside an archive', () => {
+  const wrapped = () => path.join(dir, 'wrapped.zip');
+  const settle = () => new Promise((r) => setTimeout(r, 400));
+  // `sub` is a row label as well as part of the address, so match the separator
+  // the address bar puts in front of it rather than the bare name
+  const INSIDE_SUB = '› sub';
+
+  it('descends into a directory inside the archive on Enter', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialArchive={wrapped()} />);
+    await settle();
+    expect(lastFrame() ?? '').not.toContain(INSIDE_SUB);
+
+    stdin.write('\r');
+    await settle();
+
+    const out = lastFrame() ?? '';
+    expect(out).toContain(INSIDE_SUB);
+    expect(out).toContain('inner.txt');
+  });
+
+  it('offers the enter hint over a directory inside the archive', async () => {
+    const { lastFrame } = render(<BrowserPage initialArchive={wrapped()} />);
+    await settle();
+    expect(lastFrame() ?? '').toContain('Enter 进入');
+  });
+
+  // stepping out of `sub` lands at the package root, not back on the filesystem
+  it('steps up one level on ← rather than leaving the package', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialArchive={wrapped()} />);
+    await settle();
+    stdin.write('\r');
+    await settle();
+    expect(lastFrame() ?? '').toContain(INSIDE_SUB);
+
+    stdin.write('\x1b[D'); // left
+    await settle();
+
+    const out = lastFrame() ?? '';
+    expect(out).toContain('📦');
+    expect(out).not.toContain(INSIDE_SUB);
+  });
+
+  it('says where ← goes: up a level below the root, out of the package at it', async () => {
+    const { lastFrame, stdin } = render(<BrowserPage initialArchive={wrapped()} />);
+    await settle();
+    expect(lastFrame() ?? '').toContain('← 退出包');
+
+    stdin.write('\r');
+    await settle();
+
+    const out = lastFrame() ?? '';
+    expect(out).toContain('← 上一级');
+    expect(out).not.toContain('← 退出包');
+  });
+});
+
 describe('BrowserPage refresh after its own run', () => {
   // same wait the extraction cases use for work that leaves the render loop
   const settle = () => new Promise((r) => setTimeout(r, 400));

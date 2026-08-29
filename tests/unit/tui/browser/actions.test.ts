@@ -138,15 +138,67 @@ describe('availableActions inside an archive', () => {
     ).not.toContain('compress');
   });
 
-  // entering is a filesystem-only action: an archive nested inside another
-  // archive cannot be opened in place
-  it('never offers enter inside an archive', () => {
+  /**
+   * A package's directories are navigable exactly like the filesystem's — that
+   * is the whole point of per-level browsing, and `Location.innerDir` exists
+   * only to hold the result.
+   *
+   * This once read "never offers enter inside an archive", justified by nested
+   * archives not being openable in place. The justification was sound and the
+   * conclusion was not: it generalised a rule about *files* into a rule about
+   * every row, which left directories unreachable and `innerDir` permanently
+   * empty. The fixture below was a file, so the over-broad implementation
+   * satisfied it and the gap went unseen.
+   */
+  it('offers enter on a directory inside an archive', () => {
+    const out = availableActions({
+      location: archiveLocation('/w/a.zip', ''),
+      cursor: { id: 'app', isDir: true, isArchive: false },
+      selectionCount: 0,
+    });
+    const enter = out.find((a) => a.id === 'enter');
+    expect(enter?.key).toBe('Enter');
+    expect(enter?.labelKey).toBe('action.enter');
+  });
+
+  // a package nested inside another has to come out before it can be opened,
+  // so its row behaves like any other file
+  it('offers no enter on a file inside an archive, nested package or not', () => {
+    for (const id of ['inner.zip', 'readme.md']) {
+      expect(
+        ids({
+          location: archiveLocation('/w/a.zip', ''),
+          cursor: { id, isDir: false, isArchive: false },
+          selectionCount: 0,
+        }),
+      ).not.toContain('enter');
+    }
+  });
+
+  // the tree shows the whole package at once, so its rows are not one level and
+  // descending into one would change the address under an unchanged listing
+  it('offers no enter in tree view, even on a directory', () => {
     expect(
       ids({
         location: archiveLocation('/w/a.zip', ''),
-        cursor: { id: 'inner.zip', isDir: false, isArchive: false },
+        cursor: { id: 'app', isDir: true, isArchive: false },
         selectionCount: 0,
+        treeView: true,
       }),
     ).not.toContain('enter');
+  });
+
+  // one key, two destinations: at the root it leaves the package, below it goes
+  // up a level. Saying "leave" both times would be a lie half the time.
+  it('labels the way out for where it actually goes', () => {
+    const at = (innerDir: string) =>
+      availableActions({
+        location: archiveLocation('/w/a.zip', innerDir),
+        cursor: NO_CURSOR,
+        selectionCount: 0,
+      }).find((a) => a.id === 'leave');
+
+    expect(at('')?.labelKey).toBe('action.leaveArchive');
+    expect(at('app/lib')?.labelKey).toBe('action.leaveLevel');
   });
 });

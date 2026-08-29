@@ -271,6 +271,7 @@ export const BrowserPage: React.FC<BrowserPageProps> = ({ initialDir, initialArc
         ? { id: focused.id, isDir: focused.isDir, isArchive: focused.isArchive }
         : null,
     selectionCount: count(selection),
+    treeView,
   });
 
   const openArchive = async (archivePath: string): Promise<void> => {
